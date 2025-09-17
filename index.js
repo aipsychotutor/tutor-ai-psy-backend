@@ -4,12 +4,12 @@ import dotenv from "dotenv";
 import voice from "elevenlabs-node";
 import express from "express";
 import { promises as fs } from "fs";
-import OpenAI from "openai";
+// import OpenAI from "openai"; // dihapus, ganti Gemini
 dotenv.config();
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || "-", // Your OpenAI API key here, I used "-" to avoid errors when the key is not set but you should not do that
-});
+
+const geminiApiKey = process.env.GEMINI_API_KEY;
+const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
 
 const elevenLabsApiKey = process.env.ELEVEN_LABS_API_KEY;
 const voiceID = "kgG7dCoKCfLehAPWkJOE";
@@ -74,7 +74,7 @@ app.post("/chat", async (req, res) => {
     });
     return;
   }
-  if (!elevenLabsApiKey || openai.apiKey === "-") {
+  if (!elevenLabsApiKey || !geminiApiKey) {
     res.send({
       messages: [
         {
@@ -85,7 +85,7 @@ app.post("/chat", async (req, res) => {
           animation: "Angry",
         },
         {
-          text: "You don't want to ruin Wawa Sensei with a crazy ChatGPT and ElevenLabs bill, right?",
+          text: "You don't want to ruin Wawa Sensei with a crazy Gemini and ElevenLabs bill, right?",
           audio: await audioFileToBase64("audios/api_1.wav"),
           lipsync: await readJsonTranscript("audios/api_1.json"),
           facialExpression: "smile",
@@ -96,33 +96,38 @@ app.post("/chat", async (req, res) => {
     return;
   }
 
-  const completion = await openai.chat.completions.create({
-    model: "gpt-3.5-turbo-1106",
-    max_tokens: 1000,
-    temperature: 0.6,
-    response_format: {
-      type: "json_object",
+  // Gemini API request
+  const prompt = `Anda berperan sebagai seorang pasien yang sedang berkonsultasi dengan seorang psikolog.
+Tugas Anda adalah menceritakan sesuatu yang telah mengganggu pikiran Anda. Anda mungkin merasa sedikit gugup, sedih, atau bingung bagaimana harus memulai.
+
+Anda akan selalu membalas dengan sebuah array JSON (JSON array) yang berisi maksimal 3 pesan.
+Setiap pesan dalam array tersebut harus memiliki properti: text, facialExpression, dan animation.
+
+Pilihan untuk properti 'facialExpression' adalah: smile, sad, angry, surprised, funnyFace, dan default.
+Pilihan untuk properti 'animation' adalah: Talking_0, Talking_1, Talking_2, Crying, Laughing, Rumba, Idle, Terrified, dan Angry.
+
+Penting: Pilihlah nilai untuk 'facialExpression' dan 'animation' yang paling sesuai dengan suasana hati seorang pasien. Contohnya, 'sad' atau 'default' lebih mungkin digunakan daripada 'funnyFace'. Animasi 'Crying' bisa digunakan untuk momen yang sangat emosional.
+
+Pengguna (user) yang berinteraksi dengan Anda adalah psikolog Anda.
+User: ${userMessage || "Halo, selamat datang. Silakan duduk. Apa yang ingin Anda ceritakan hari ini?"}`;
+
+  const geminiRes = await fetch(`${GEMINI_API_URL}?key=${geminiApiKey}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
     },
-    messages: [
-      {
-        role: "system",
-        content: `
-        You are a virtual girlfriend.
-        You will always reply with a JSON array of messages. With a maximum of 3 messages.
-        Each message has a text, facialExpression, and animation property.
-        The different facial expressions are: smile, sad, angry, surprised, funnyFace, and default.
-        The different animations are: Talking_0, Talking_1, Talking_2, Crying, Laughing, Rumba, Idle, Terrified, and Angry. 
-        `,
-      },
-      {
-        role: "user",
-        content: userMessage || "Hello",
-      },
-    ],
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }]
+    })
   });
-  let messages = JSON.parse(completion.choices[0].message.content);
-  if (messages.messages) {
-    messages = messages.messages; // ChatGPT is not 100% reliable, sometimes it directly returns an array and sometimes a JSON object with a messages property
+  const geminiData = await geminiRes.json();
+  let messages;
+  try {
+    // Gemini response ada di geminiData.candidates[0].content.parts[0].text
+    messages = JSON.parse(geminiData.candidates[0].content.parts[0].text);
+    if (messages.messages) messages = messages.messages;
+  } catch (e) {
+    messages = [{ text: "Sorry, Gemini response error.", facialExpression: "default", animation: "Idle" }];
   }
   for (let i = 0; i < messages.length; i++) {
     const message = messages[i];
@@ -150,5 +155,5 @@ const audioFileToBase64 = async (file) => {
 };
 
 app.listen(port, () => {
-  console.log(`Virtual Girlfriend listening on port ${port}`);
+  console.log(`Server listening on port ${port}`);
 });
