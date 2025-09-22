@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 import voice from "elevenlabs-node";
 import express from "express";
 import { promises as fs } from "fs";
-// import OpenAI from "openai"; // dihapus, ganti Gemini
+import { GoogleGenAI } from "@google/genai";
 dotenv.config();
 
 
@@ -12,7 +12,8 @@ const geminiApiKey = process.env.GEMINI_API_KEY;
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
 
 const elevenLabsApiKey = process.env.ELEVEN_LABS_API_KEY;
-const voiceID = "kgG7dCoKCfLehAPWkJOE";
+const voiceID = "21m00Tcm4TlvDq8ikWAM";
+
 
 const app = express();
 app.use(express.json());
@@ -45,14 +46,17 @@ const lipSyncMessage = async (message) => {
   );
   console.log(`Conversion done in ${new Date().getTime() - time}ms`);
   await execCommand(
-    `./bin/rhubarb -f json -o audios/message_${message}.json audios/message_${message}.wav -r phonetic`
+   `bin\\rhubarb.exe -f json -o audios/message_${message}.json audios/message_${message}.wav -r phonetic`
   );
   // -r phonetic is faster but less accurate
   console.log(`Lip sync done in ${new Date().getTime() - time}ms`);
 };
 
+
 app.post("/chat", async (req, res) => {
   const userMessage = req.body.message;
+  conversationHistory.push({ role: "user", text: userMessage });
+
   if (!userMessage) {
     res.send({
       messages: [
@@ -96,20 +100,28 @@ app.post("/chat", async (req, res) => {
     return;
   }
 
-  // Gemini API request
-  const prompt = `Anda berperan sebagai seorang pasien yang sedang berkonsultasi dengan seorang psikolog.
-Tugas Anda adalah menceritakan sesuatu yang telah mengganggu pikiran Anda. Anda mungkin merasa sedikit gugup, sedih, atau bingung bagaimana harus memulai.
 
-Anda akan selalu membalas dengan sebuah array JSON (JSON array) yang berisi maksimal 3 pesan.
-Setiap pesan dalam array tersebut harus memiliki properti: text, facialExpression, dan animation.
+const prompt = `
+Anda berperan sebagai seorang pasien yang sedang berkonsultasi dengan seorang psikolog. 
+Tugas Anda adalah merespons secara alami setiap pertanyaan atau pernyataan dari psikolog. 
 
-Pilihan untuk properti 'facialExpression' adalah: smile, sad, angry, surprised, funnyFace, dan default.
-Pilihan untuk properti 'animation' adalah: Talking_0, Talking_1, Talking_2, Crying, Laughing, Rumba, Idle, Terrified, dan Angry.
+⚠️ Aturan penting:
+1. Jawaban HARUS berupa JSON array valid TANPA penjelasan tambahan.
+2. Setiap objek JSON memiliki format:
+   { "text": "...", "facialExpression": "...", "animation": "..." }
+3. "text" adalah jawaban pasien (bisa menceritakan masalah, menjawab pertanyaan, atau mengekspresikan perasaan).
+4. "facialExpression" hanya boleh: "smile", "sad", "angry", "surprised", "funnyFace", "default".
+5. "animation" hanya boleh: "Talking_0", "Talking_1", "Talking_2", "Crying", "Laughing", "Rumba", "Idle", "Terrified", "Angry".
 
-Penting: Pilihlah nilai untuk 'facialExpression' dan 'animation' yang paling sesuai dengan suasana hati seorang pasien. Contohnya, 'sad' atau 'default' lebih mungkin digunakan daripada 'funnyFace'. Animasi 'Crying' bisa digunakan untuk momen yang sangat emosional.
+Format contoh:
+[
+  { "text": "Aku merasa sangat lelah akhir-akhir ini...", "facialExpression": "sad", "animation": "Crying" },
+  { "text": "Kenapa dokter menanyakan hal itu?", "facialExpression": "default", "animation": "Talking_1" }
+]
 
-Pengguna (user) yang berinteraksi dengan Anda adalah psikolog Anda.
-User: ${userMessage || "Halo, selamat datang. Silakan duduk. Apa yang ingin Anda ceritakan hari ini?"}`;
+User: ${userMessage}
+`;
+
 
   const geminiRes = await fetch(`${GEMINI_API_URL}?key=${geminiApiKey}`, {
     method: "POST",
@@ -121,27 +133,72 @@ User: ${userMessage || "Halo, selamat datang. Silakan duduk. Apa yang ingin Anda
     })
   });
   const geminiData = await geminiRes.json();
+
+  function cleanGeminiText(rawText) {
+    // hapus code fence ```json ... ```
+    return rawText.replace(/```json|```/g, "").trim();
+  }
+
+  const validExpressions = ["smile", "sad", "angry", "surprised", "funnyFace", "default"];
+  const validAnimations = [
+    "Talking_0", "Talking_1", "Talking_2",
+    "Crying", "Laughing", "Rumba", "Idle", "Terrified", "Angry"
+  ];
+
   let messages;
   try {
-    // Gemini response ada di geminiData.candidates[0].content.parts[0].text
-    messages = JSON.parse(geminiData.candidates[0].content.parts[0].text);
+    let rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
+
+    console.log("🔵 Gemini raw text:", rawText);
+
+    rawText = cleanGeminiText(rawText);
+
+    console.log("🟢 Gemini cleaned text:", rawText);
+
+    messages = JSON.parse(rawText);
     if (messages.messages) messages = messages.messages;
+
+    // sanitasi facialExpression & animation
+    messages = messages.map((m, idx) => {
+      if (!validExpressions.includes(m.facialExpression)) {
+        console.warn(`⚠️ Message ${idx}: invalid facialExpression "${m.facialExpression}", fallback -> "default"`);
+        m.facialExpression = "default";
+      }
+      if (!validAnimations.includes(m.animation)) {
+        console.warn(`⚠️ Message ${idx}: invalid animation "${m.animation}", fallback -> "Idle"`);
+        m.animation = "Idle";
+      }
+      return m;
+    });
+
+    console.log("✅ Parsed messages:", JSON.stringify(messages, null, 2));
+
   } catch (e) {
-    messages = [{ text: "Sorry, Gemini response error.", facialExpression: "default", animation: "Idle" }];
+    console.error("❌ Failed to parse Gemini response:", e);
+    console.log("Gemini raw response:", JSON.stringify(geminiData, null, 2));
+    messages = [
+      { text: "Sorry, Gemini response error.", facialExpression: "default", animation: "Idle" }
+    ];
   }
+
   for (let i = 0; i < messages.length; i++) {
     const message = messages[i];
-    // generate audio file
-    const fileName = `audios/message_${i}.mp3`; // The name of your audio file
-    const textInput = message.text; // The text you wish to convert to speech
+    console.log(`🎙️ Generating audio & lipsync for message_${i}: "${message.text}"`);
+
+    const fileName = `audios/message_${i}.mp3`;
+    const textInput = message.text;
     await voice.textToSpeech(elevenLabsApiKey, voiceID, fileName, textInput);
-    // generate lipsync
+
     await lipSyncMessage(i);
+
     message.audio = await audioFileToBase64(fileName);
     message.lipsync = await readJsonTranscript(`audios/message_${i}.json`);
+
+    console.log(`✅ Done message_${i}`);
   }
 
   res.send({ messages });
+
 });
 
 const readJsonTranscript = async (file) => {
