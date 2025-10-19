@@ -8,6 +8,7 @@ import { promises as fs } from "fs";
 import { GoogleGenAI } from "@google/genai";
 import authRoutes from "./routes/auth.js";
 import patientRoutes from "./routes/patients.js";
+import sessionsRoutes from './routes/sessions.js';
 dotenv.config();
 
 const geminiApiKey = process.env.GEMINI_API_KEY;
@@ -25,6 +26,7 @@ app.use(cors({
 }));
 app.use("/api/auth", authRoutes);
 app.use("/api/patients", patientRoutes);
+app.use('/api/sessions', sessionsRoutes);
 const port = 3000;
 
 const promptTemplate = `
