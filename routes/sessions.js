@@ -179,4 +179,32 @@ router.get('/filter', async (req, res) => {
   }
 });
 
+router.patch('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, end_time } = req.body;
+
+    const { data, error } = await supabase
+      .from('sessions')
+      .update({ status, end_time })
+      .eq('session_id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    if (!data) {
+      return res.status(404).json({ message: 'Session not found' });
+    }
+
+    return res.json({ message: 'Session updated', session: data });
+  } catch (error) {
+    console.error('Error updating session:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+});
+
 export default router;
