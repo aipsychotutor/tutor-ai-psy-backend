@@ -75,23 +75,58 @@ router.post("/guest", async (req, res) => {
     const { nama } = req.body;
 
     if (!nama || nama.trim() === "") {
-      return res.status(400).json({ status: "error", message: "Nama harus diisi" });
+      return res.status(400).json({
+        status: "error",
+        message: "Nama harus diisi",
+      });
     }
 
-    // Buat user guest baru di tabel 'users'
-    const { data, error } = await supabase
+    const cleanName = nama.trim();
+
+    // 🔍 1️⃣ Cek apakah guest dengan nama ini sudah ada
+    const { data: existingUser, error: findError } = await supabase
       .from("users")
-      .insert([{ username: nama.trim(), is_guest: true }])
+      .select("user_id, username, is_guest, created_at")
+      .eq("username", cleanName)
+      .eq("is_guest", true)
+      .single();
+
+    if (findError && findError.code !== "PGRST116") throw findError;
+
+    // 🧩 2️⃣ Kalau sudah ada, langsung buat session baru untuk dia
+    if (existingUser) {
+      const { data: sessionData, error: sessionError } = await supabase
+        .from("sessions")
+        .insert([
+          { user_id: existingUser.user_id, created_at: new Date().toISOString() },
+        ])
+        .select("session_id, user_id, created_at")
+        .single();
+
+      if (sessionError) throw sessionError;
+
+      return res.json({
+        status: "ok",
+        user: existingUser,
+        session: sessionData,
+        message: "Guest lama digunakan kembali",
+      });
+    }
+
+    // 🧱 3️⃣ Kalau belum ada, buat user guest baru
+    const { data: newUser, error: insertError } = await supabase
+      .from("users")
+      .insert([{ username: cleanName, is_guest: true }])
       .select("user_id, username, is_guest, created_at")
       .single();
 
-    if (error) throw error;
+    if (insertError) throw insertError;
 
-    // Buat session baru di tabel 'sessions'
+    // Buat session baru
     const { data: sessionData, error: sessionError } = await supabase
       .from("sessions")
       .insert([
-        { user_id: data.user_id, created_at: new Date().toISOString() }
+        { user_id: newUser.user_id, created_at: new Date().toISOString() },
       ])
       .select("session_id, user_id, created_at")
       .single();
@@ -100,12 +135,16 @@ router.post("/guest", async (req, res) => {
 
     res.json({
       status: "ok",
-      user: data,
-      session: sessionData
+      user: newUser,
+      session: sessionData,
+      message: "Guest baru dibuat",
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ status: "error", message: err.message });
+    res.status(500).json({
+      status: "error",
+      message: err.message,
+    });
   }
 });
 

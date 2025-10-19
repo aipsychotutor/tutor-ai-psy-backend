@@ -87,4 +87,34 @@ router.get('/all', async (req, res) => {
   }
 });
 
+// GET /api/patients/model/:patientId
+// Di routes/patients.js - ganti endpoint model ini:
+router.get("/model/:patientId", async (req, res) => {
+  try {
+    const { patientId } = req.params;
+    console.log("Fetching avatar for patient:", patientId);
+
+    const { data, error } = await supabase
+      .from("patients")
+      .select("avatar_path")
+      .eq("patient_id", patientId)
+      .single();
+
+    if (error) {
+      console.error("Supabase error:", error);
+      return res.status(400).json({ error: error.message });
+    }
+
+    if (!data || !data.avatar_path) {
+      return res.status(404).json({ message: "Avatar path not found" });
+    }
+
+    // Return path aja tanpa full URL (misal: "models/default.glb")
+    res.json({ avatar_path: data.avatar_path });
+  } catch (err) {
+    console.error("Error fetching avatar:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
