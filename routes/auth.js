@@ -8,20 +8,23 @@ const router = express.Router();
 // Helper buat bikin token JWT
 function generateToken(user) {
   return jwt.sign(
-    { user_id: user.user_id, email: user.email }, 
-    process.env.JWT_SECRET, 
+    { user_id: user.user_id, email: user.email },
+    process.env.JWT_SECRET,
     { expiresIn: "1h" } // token berlaku 1 jam
   );
 }
 
-// Register
+// ============================
+// REGISTER
+// ============================
 router.post("/register", async (req, res) => {
   const { username, email, password } = req.body;
 
   try {
-    // Validasi input
-    if (!email || !password || !username) throw new Error("Username, email and password are required");
-    if (password.length < 6) throw new Error("Password must be at least 6 characters");
+    if (!email || !password || !username)
+      throw new Error("Username, email, dan password harus diisi");
+    if (password.length < 6)
+      throw new Error("Password minimal 6 karakter");
 
     const hashed = await bcrypt.hash(password, 10);
 
@@ -41,12 +44,15 @@ router.post("/register", async (req, res) => {
   }
 });
 
-// Login
+// ============================
+// LOGIN
+// ============================
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    if (!email || !password) throw new Error("Email and password are required");
+    if (!email || !password)
+      throw new Error("Email dan password harus diisi");
 
     const { data, error } = await supabase
       .from("users")
@@ -54,12 +60,11 @@ router.post("/login", async (req, res) => {
       .eq("email", email)
       .single();
 
-    if (error || !data) throw new Error("User not found");
+    if (error || !data) throw new Error("User tidak ditemukan");
 
     const valid = await bcrypt.compare(password, data.password_hash);
-    if (!valid) throw new Error("Invalid password");
+    if (!valid) throw new Error("Password salah");
 
-    // Hilangkan password_hash dari response
     const { password_hash, ...safeUser } = data;
     const token = generateToken(safeUser);
 
@@ -69,21 +74,18 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// Buat guest baru
+// ============================
+// BUAT GUEST USER
+// ============================
 router.post("/guest", async (req, res) => {
   try {
     const { nama } = req.body;
-
-    if (!nama || nama.trim() === "") {
-      return res.status(400).json({
-        status: "error",
-        message: "Nama harus diisi",
-      });
-    }
+    if (!nama || nama.trim() === "")
+      throw new Error("Nama harus diisi");
 
     const cleanName = nama.trim();
 
-    // 🔍 1️⃣ Cek apakah guest dengan nama ini sudah ada
+    // Cek apakah guest dengan nama ini sudah ada
     const { data: existingUser, error: findError } = await supabase
       .from("users")
       .select("user_id, username, is_guest, created_at")
@@ -93,27 +95,18 @@ router.post("/guest", async (req, res) => {
 
     if (findError && findError.code !== "PGRST116") throw findError;
 
-    // 🧩 2️⃣ Kalau sudah ada, langsung buat session baru untuk dia
+    // Kalau sudah ada, langsung balikin user dan token
     if (existingUser) {
-      const { data: sessionData, error: sessionError } = await supabase
-        .from("sessions")
-        .insert([
-          { user_id: existingUser.user_id, created_at: new Date().toISOString() },
-        ])
-        .select("session_id, user_id, created_at")
-        .single();
-
-      if (sessionError) throw sessionError;
-
+      const token = generateToken(existingUser);
       return res.json({
         status: "ok",
         user: existingUser,
-        session: sessionData,
+        token,
         message: "Guest lama digunakan kembali",
       });
     }
 
-    // 🧱 3️⃣ Kalau belum ada, buat user guest baru
+    // Kalau belum ada, buat guest baru
     const { data: newUser, error: insertError } = await supabase
       .from("users")
       .insert([{ username: cleanName, is_guest: true }])
@@ -122,25 +115,15 @@ router.post("/guest", async (req, res) => {
 
     if (insertError) throw insertError;
 
-    // Buat session baru
-    const { data: sessionData, error: sessionError } = await supabase
-      .from("sessions")
-      .insert([
-        { user_id: newUser.user_id, created_at: new Date().toISOString() },
-      ])
-      .select("session_id, user_id, created_at")
-      .single();
-
-    if (sessionError) throw sessionError;
+    const token = generateToken(newUser);
 
     res.json({
       status: "ok",
       user: newUser,
-      session: sessionData,
+      token,
       message: "Guest baru dibuat",
     });
   } catch (err) {
-    console.error(err);
     res.status(500).json({
       status: "error",
       message: err.message,
@@ -148,35 +131,38 @@ router.post("/guest", async (req, res) => {
   }
 });
 
-// Upgrade guest jadi login user
+// ============================
+// UPGRADE GUEST JADI USER
+// ============================
 router.post("/upgrade", async (req, res) => {
   const { user_id, username, email, password } = req.body;
 
   try {
-    if (!user_id || !username || !email || !password) throw new Error("All fields are required");
-    if (password.length < 6) throw new Error("Password must be at least 6 characters");
+    if (!user_id || !username || !email || !password)
+      throw new Error("Semua field harus diisi");
+    if (password.length < 6)
+      throw new Error("Password minimal 6 karakter");
 
-    // Cek dulu apakah user masih guest
     const { data: existingUser, error: fetchError } = await supabase
       .from("users")
       .select("is_guest")
       .eq("user_id", user_id)
       .single();
 
-    if (fetchError || !existingUser) throw new Error("User not found");
-    if (!existingUser.is_guest) throw new Error("User is already registered");
+    if (fetchError || !existingUser)
+      throw new Error("User tidak ditemukan");
+    if (!existingUser.is_guest)
+      throw new Error("User sudah terdaftar");
 
-    // Hash password baru
     const hashed = await bcrypt.hash(password, 10);
 
-    // Update guest user jadi login user
     const { data, error } = await supabase
       .from("users")
       .update({
         username,
         email,
         password_hash: hashed,
-        is_guest: false
+        is_guest: false,
       })
       .eq("user_id", user_id)
       .select("user_id, username, email, is_guest");
