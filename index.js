@@ -9,6 +9,7 @@ import { GoogleGenAI } from "@google/genai";
 import authRoutes from "./routes/auth.js";
 import patientRoutes from "./routes/patients.js";
 import sessionsRoutes from './routes/sessions.js';
+import reportsRoutes from './routes/reports.js';
 dotenv.config();
 
 const geminiApiKey = process.env.GEMINI_API_KEY;
@@ -27,6 +28,7 @@ app.use(cors({
 app.use("/api/auth", authRoutes);
 app.use("/api/patients", patientRoutes);
 app.use('/api/sessions', sessionsRoutes);
+app.use('/api/reports', reportsRoutes);
 const port = 3000;
 
 const promptTemplate = `
@@ -59,7 +61,7 @@ Jawablah setiap pertanyaan atau pernyataan psikolog secara alami, sesuai dengan 
 User: {{userMessage}}
 `;
 
-// 🎭 Persona Default: Maya
+// Persona Default: Maya
 const personaMaya = {
   nama_pasien: "Maya (Josephine Elsje Basudara)",
   biodata: `- Usia: 25 tahun
@@ -73,7 +75,7 @@ const personaMaya = {
 - Terlihat ramah kepada pelanggan, tapi tertutup mengenai masalah pribadi.`
 };
 
-// 💾 Variabel untuk menyimpan persona aktif (dalam memori)
+// // 💾 Variabel untuk menyimpan persona aktif (dalam memori)
 let activePersona = personaMaya;
 
 // 🛠️ Fungsi untuk mengganti placeholder di template
@@ -85,6 +87,65 @@ function fillTemplate(template, data) {
   }
   return result;
 }
+
+app.post("/set-persona-from-patient", async (req, res) => {
+  try {
+    const { patient_id } = req.body;
+
+    if (!patient_id) {
+      return res.status(400).json({
+        success: false,
+        message: "patient_id is required"
+      });
+    }
+
+    console.log("📋 Fetching patient data for persona:", patient_id);
+
+    const { data: patient, error } = await supabase
+      .from("patients")
+      .select("*")
+      .eq("patient_id", patient_id)
+      .single();
+
+    if (error || !patient) {
+      console.error("❌ Patient not found:", error);
+      return res.status(404).json({
+        success: false,
+        message: "Patient not found"
+      });
+    }
+
+    const newPersona = {
+      nama_pasien: patient.patient_name,
+      biodata: `- Usia: ${patient.age || 'Tidak diketahui'} tahun
+- Jenis Kelamin: ${patient.gender || 'Tidak diketahui'}
+- Pekerjaan: ${patient.occupation || 'Tidak diketahui'}
+- Status: ${patient.marital_status || 'Tidak diketahui'}`,
+      latar_belakang_cerita: patient.background_story || 'Tidak ada latar belakang',
+      kepribadian: Array.isArray(patient.personality_traits) 
+        ? patient.personality_traits.map(trait => `- ${trait}`).join('\n')
+        : '- Kepribadian tidak terdefinisi'
+    };
+
+    activePersona = newPersona;
+    
+    console.log("✅ Persona berhasil diset dari patient:", patient.patient_name);
+
+    res.json({
+      success: true,
+      message: "Persona berhasil diset dari data patient",
+      activePersona: activePersona,
+      patient_id: patient_id
+    });
+
+  } catch (err) {
+    console.error("❌ Error setting persona from patient:", err);
+    res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+});
 
 app.get("/", (req, res) => {
   res.send("Hello World!");
