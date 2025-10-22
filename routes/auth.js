@@ -1,3 +1,5 @@
+// ./routes/auth.js
+
 import express from "express";
 import { supabase } from "../supabase.js";
 import bcrypt from "bcrypt";
@@ -23,8 +25,7 @@ router.post("/register", async (req, res) => {
   try {
     if (!email || !password || !username)
       throw new Error("Username, email, dan password harus diisi");
-    if (password.length < 6)
-      throw new Error("Password minimal 6 karakter");
+    if (password.length < 6) throw new Error("Password minimal 6 karakter");
 
     const hashed = await bcrypt.hash(password, 10);
 
@@ -51,8 +52,7 @@ router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    if (!email || !password)
-      throw new Error("Email dan password harus diisi");
+    if (!email || !password) throw new Error("Email dan password harus diisi");
 
     const { data, error } = await supabase
       .from("users")
@@ -80,8 +80,7 @@ router.post("/login", async (req, res) => {
 router.post("/guest", async (req, res) => {
   try {
     const { nama } = req.body;
-    if (!nama || nama.trim() === "")
-      throw new Error("Nama harus diisi");
+    if (!nama || nama.trim() === "") throw new Error("Nama harus diisi");
 
     const cleanName = nama.trim();
 
@@ -92,7 +91,6 @@ router.post("/guest", async (req, res) => {
       .eq("username", cleanName)
       .eq("is_guest", true)
       .single();
-
     if (findError && findError.code !== "PGRST116") throw findError;
 
     // Kalau sudah ada, langsung balikin user dan token
@@ -140,8 +138,7 @@ router.post("/upgrade", async (req, res) => {
   try {
     if (!user_id || !username || !email || !password)
       throw new Error("Semua field harus diisi");
-    if (password.length < 6)
-      throw new Error("Password minimal 6 karakter");
+    if (password.length < 6) throw new Error("Password minimal 6 karakter");
 
     const { data: existingUser, error: fetchError } = await supabase
       .from("users")
@@ -149,10 +146,8 @@ router.post("/upgrade", async (req, res) => {
       .eq("user_id", user_id)
       .single();
 
-    if (fetchError || !existingUser)
-      throw new Error("User tidak ditemukan");
-    if (!existingUser.is_guest)
-      throw new Error("User sudah terdaftar");
+    if (fetchError || !existingUser) throw new Error("User tidak ditemukan");
+    if (!existingUser.is_guest) throw new Error("User sudah terdaftar");
 
     const hashed = await bcrypt.hash(password, 10);
 

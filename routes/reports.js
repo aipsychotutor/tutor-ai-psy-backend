@@ -1,3 +1,5 @@
+// ./routes/reports.js
+
 import express from "express";
 import { supabase } from "../supabase.js";
 
@@ -58,14 +60,19 @@ router.get("/api/sessions/:session_id/evaluation", async (req, res) => {
 router.post("/api/sessions/:session_id/evaluation", async (req, res) => {
   try {
     const { session_id } = req.params;
-    const { empathy_score, question_score, ethics_score, feedback_text } = req.body;
+    const { empathy_score, question_score, ethics_score, feedback_text } =
+      req.body;
 
     // Validasi nilai
     if (empathy_score && (empathy_score < 0 || empathy_score > 100)) {
-      return res.status(400).json({ error: "empathy_score harus antara 0-100" });
+      return res
+        .status(400)
+        .json({ error: "empathy_score harus antara 0-100" });
     }
     if (question_score && (question_score < 0 || question_score > 100)) {
-      return res.status(400).json({ error: "question_score harus antara 0-100" });
+      return res
+        .status(400)
+        .json({ error: "question_score harus antara 0-100" });
     }
     if (ethics_score && (ethics_score < 0 || ethics_score > 100)) {
       return res.status(400).json({ error: "ethics_score harus antara 0-100" });
@@ -133,7 +140,8 @@ router.get("/api/sessions/patient/:patient_id/report", async (req, res) => {
 
     let query = supabase
       .from("sessions")
-      .select(`
+      .select(
+        `
         session_id,
         user_id,
         patient_id,
@@ -147,7 +155,8 @@ router.get("/api/sessions/patient/:patient_id/report", async (req, res) => {
           feedback_text,
           created_at
         )
-      `)
+      `
+      )
       .eq("patient_id", patient_id)
       .order("start_time", { ascending: false });
 
@@ -157,7 +166,9 @@ router.get("/api/sessions/patient/:patient_id/report", async (req, res) => {
     if (error) throw error;
 
     const totalSessions = sessions.length;
-    const completedSessions = sessions.filter((s) => s.status === "finished").length;
+    const completedSessions = sessions.filter(
+      (s) => s.status === "finished"
+    ).length;
     const evaluatedSessions = sessions.filter((s) => s.session_evaluations);
 
     let averageScores = { empathy: 0, question: 0, ethics: 0, overall: 0 };
@@ -174,11 +185,20 @@ router.get("/api/sessions/patient/:patient_id/report", async (req, res) => {
         { empathy: 0, question: 0, ethics: 0 }
       );
 
-      averageScores.empathy = Math.round(totals.empathy / evaluatedSessions.length);
-      averageScores.question = Math.round(totals.question / evaluatedSessions.length);
-      averageScores.ethics = Math.round(totals.ethics / evaluatedSessions.length);
+      averageScores.empathy = Math.round(
+        totals.empathy / evaluatedSessions.length
+      );
+      averageScores.question = Math.round(
+        totals.question / evaluatedSessions.length
+      );
+      averageScores.ethics = Math.round(
+        totals.ethics / evaluatedSessions.length
+      );
       averageScores.overall = Math.round(
-        (averageScores.empathy + averageScores.question + averageScores.ethics) / 3
+        (averageScores.empathy +
+          averageScores.question +
+          averageScores.ethics) /
+          3
       );
     }
 
@@ -210,7 +230,8 @@ router.get("/api/sessions/user/:user_id/statistics", async (req, res) => {
 
     const { data: sessions, error } = await supabase
       .from("sessions")
-      .select(`
+      .select(
+        `
         session_id,
         status,
         start_time,
@@ -220,7 +241,8 @@ router.get("/api/sessions/user/:user_id/statistics", async (req, res) => {
           question_score,
           ethics_score
         )
-      `)
+      `
+      )
       .eq("user_id", user_id);
 
     if (error) throw error;
@@ -234,7 +256,9 @@ router.get("/api/sessions/user/:user_id/statistics", async (req, res) => {
       averageScores: { empathy: 0, question: 0, ethics: 0, overall: 0 },
     };
 
-    const completedWithTime = sessions.filter((s) => s.end_time && s.start_time);
+    const completedWithTime = sessions.filter(
+      (s) => s.end_time && s.start_time
+    );
     if (completedWithTime.length > 0) {
       const totalMinutes = completedWithTime.reduce((acc, s) => {
         const duration = new Date(s.end_time) - new Date(s.start_time);
@@ -256,11 +280,18 @@ router.get("/api/sessions/user/:user_id/statistics", async (req, res) => {
         { empathy: 0, question: 0, ethics: 0 }
       );
 
-      stats.averageScores.empathy = Math.round(totals.empathy / evaluated.length);
-      stats.averageScores.question = Math.round(totals.question / evaluated.length);
+      stats.averageScores.empathy = Math.round(
+        totals.empathy / evaluated.length
+      );
+      stats.averageScores.question = Math.round(
+        totals.question / evaluated.length
+      );
       stats.averageScores.ethics = Math.round(totals.ethics / evaluated.length);
       stats.averageScores.overall = Math.round(
-        (stats.averageScores.empathy + stats.averageScores.question + stats.averageScores.ethics) / 3
+        (stats.averageScores.empathy +
+          stats.averageScores.question +
+          stats.averageScores.ethics) /
+          3
       );
     }
 
