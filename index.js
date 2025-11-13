@@ -14,7 +14,8 @@ import sessionsRoutes from "./routes/sessions.js";
 import reportsRoutes from "./routes/reports.js";
 
 // Middleware
-import authMiddleware from './middleware/auth.js';
+import authMiddleware from './middleware/authMiddleware.js';
+import authMiddleware from './middleware/roleMiddleware.js';
 
 // ========== CONFIG ==========
 const app = express();
@@ -34,6 +35,7 @@ const voiceID = "21m00Tcm4TlvDq8ikWAM";
 
 const GEMINI_API_URL =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
+const MODEL_API_URL = process.env.MODEL_API_URL || 'http://localhost:3001'; // Changed to 3001 to avoid conflict
 
 // ========== ROUTE REGISTER ==========
 app.use("/api/auth", authRoutes);
