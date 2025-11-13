@@ -6,9 +6,23 @@ import { supabase } from "../supabase.js";
 const router = express.Router();
 
 // 📋 GET /api/sessions/:session_id/transcripts
-router.get("/api/sessions/:session_id/transcripts", async (req, res) => {
+router.get("/transcripts/:session_id", async (req, res) => {
   try {
     const { session_id } = req.params;
+    const user_id = req.user.user_id;
+
+    const { data: session, error: sessionError } = await supabase
+      .from("sessions")
+      .select("session_id")
+      .eq("session_id", session_id)
+      .eq("user_id", user_id) // <-- Cek kepemilikan
+      .single();
+
+    if (sessionError || !session) {
+      return res
+        .status(404)
+        .json({ message: "Sesi tidak ditemukan atau Anda tidak punya akses." });
+    }
 
     const { data, error } = await supabase
       .from("session_transcripts")
@@ -26,15 +40,30 @@ router.get("/api/sessions/:session_id/transcripts", async (req, res) => {
 });
 
 // 📊 GET /api/sessions/:session_id/evaluation
-router.get("/api/sessions/:session_id/evaluation", async (req, res) => {
+router.get("/evaluation/:session_id", async (req, res) => {
   try {
     const { session_id } = req.params;
+    const user_id = req.user.user_id;
 
-    const { data, error } = await supabase
-      .from("session_evaluations")
-      .select("*")
-      .eq("session_id", session_id)
-      .single();
+    const { data: session, error: sessionError } = await supabase
+      .from("sessions")
+      .select("session_id")
+      .eq("session_id", session_id)
+      .eq("user_id", user_id) // <-- Cek kepemilikan
+      .single();
+
+    if (sessionError || !session) {
+      return res
+        .status(404)
+        .json({ message: "Sesi tidak ditemukan atau Anda tidak punya akses." });
+    }
+    
+    // 2. AMBIL DATA: Jika lolos, baru ambil dari "Lemari Evaluasi"
+    const { data, error } = await supabase
+      .from("session_evaluations")
+      .select("*")
+      .eq("session_id", session_id) // <-- Cukup pakai session_id
+      .single();
 
     if (error && error.code !== "PGRST116") throw error;
 
@@ -57,11 +86,25 @@ router.get("/api/sessions/:session_id/evaluation", async (req, res) => {
 });
 
 // 💾 POST /api/sessions/:session_id/evaluation
-router.post("/api/sessions/:session_id/evaluation", async (req, res) => {
+router.post("/evaluation/:session_id", async (req, res) => {
   try {
     const { session_id } = req.params;
+    const user_id = req.user.user_id;
     const { empathy_score, question_score, ethics_score, feedback_text } =
       req.body;
+
+    const { data: session, error: sessionError } = await supabase
+      .from("sessions")
+      .select("session_id")
+      .eq("session_id", session_id)
+      .eq("user_id", user_id)
+      .single();
+
+    if (sessionError || !session) {
+      return res
+        .status(404)
+        .json({ message: "Sesi tidak ditemukan atau Anda tidak punya akses." });
+    }
 
     // Validasi nilai
     if (empathy_score && (empathy_score < 0 || empathy_score > 100)) {
@@ -79,47 +122,21 @@ router.post("/api/sessions/:session_id/evaluation", async (req, res) => {
     }
 
     // Cek apakah sudah ada
-    const { data: existing } = await supabase
+    const { data: result, error: upsertError } = await supabase
       .from("session_evaluations")
-      .select("evaluation_id")
-      .eq("session_id", session_id)
+      .upsert({
+        session_id: session_id,
+        user_id: user_id, // <-- SUNTIKKAN user_id dari token
+        empathy_score: empathy_score || 0,
+        question_score: question_score || 0,
+        ethics_score: ethics_score || 0,
+        feedback_text: feedback_text || null,
+      })
+      .eq("session_id", session_id) // Kunci untuk 'update' jika ada     // Kunci tambahan untuk 'update'
+      .select()
       .single();
 
-    let result;
-
-    if (existing) {
-      const { data, error } = await supabase
-        .from("session_evaluations")
-        .update({
-          empathy_score: empathy_score || 0,
-          question_score: question_score || 0,
-          ethics_score: ethics_score || 0,
-          feedback_text: feedback_text || null,
-        })
-        .eq("session_id", session_id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      result = data;
-    } else {
-      const { data, error } = await supabase
-        .from("session_evaluations")
-        .insert([
-          {
-            session_id,
-            empathy_score: empathy_score || 0,
-            question_score: question_score || 0,
-            ethics_score: ethics_score || 0,
-            feedback_text: feedback_text || null,
-          },
-        ])
-        .select()
-        .single();
-
-      if (error) throw error;
-      result = data;
-    }
+    if (upsertError) throw upsertError;
 
     res.json({
       success: true,
@@ -133,10 +150,23 @@ router.post("/api/sessions/:session_id/evaluation", async (req, res) => {
 });
 
 // 📈 GET /api/sessions/patient/:patient_id/report
-router.get("/api/sessions/patient/:patient_id/report", async (req, res) => {
+router.get("/patient/:patient_id", async (req, res) => {
   try {
     const { patient_id } = req.params;
-    const { user_id } = req.query;
+    const user_id = req.user.user_id;
+
+    const { data: patient, error: patientError } = await supabase
+      .from("patients")
+      .select("patient_id")
+      .eq("patient_id", patient_id)
+      .or(`user_id.eq.${user_id},user_id.is.null`)
+      .single();
+
+    if (patientError || !patient) {
+      return res
+        .status(404)
+        .json({ message: "Patient tidak ditemukan atau Anda tidak punya akses." });
+    }
 
     let query = supabase
       .from("sessions")
@@ -158,9 +188,8 @@ router.get("/api/sessions/patient/:patient_id/report", async (req, res) => {
       `
       )
       .eq("patient_id", patient_id)
+      .eq("user_id", user_id)
       .order("start_time", { ascending: false });
-
-    if (user_id) query = query.eq("user_id", user_id);
 
     const { data: sessions, error } = await query;
     if (error) throw error;
@@ -224,9 +253,9 @@ router.get("/api/sessions/patient/:patient_id/report", async (req, res) => {
 });
 
 // 📊 GET /api/sessions/user/:user_id/statistics
-router.get("/api/sessions/user/:user_id/statistics", async (req, res) => {
+router.get("/user/me/statistics", async (req, res) => {
   try {
-    const { user_id } = req.params;
+    const user_id = req.user.user_id;
 
     const { data: sessions, error } = await supabase
       .from("sessions")

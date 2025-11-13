@@ -13,6 +13,9 @@ import patientRoutes from "./routes/patients.js";
 import sessionsRoutes from "./routes/sessions.js";
 import reportsRoutes from "./routes/reports.js";
 
+// Middleware
+import authMiddleware from './middleware/auth.js';
+
 // ========== CONFIG ==========
 const app = express();
 const port = 3000;
@@ -34,9 +37,9 @@ const GEMINI_API_URL =
 
 // ========== ROUTE REGISTER ==========
 app.use("/api/auth", authRoutes);
-app.use("/api/patients", patientRoutes);
-app.use("/api/sessions", sessionsRoutes);
-app.use("/api/reports", reportsRoutes);
+app.use("/api/patients", authMiddleware, patientRoutes);
+app.use("/api/sessions", authMiddleware, sessionsRoutes);
+app.use("/api/reports", authMiddleware, reportsRoutes);
 
 // ========== PERSONA SYSTEM ==========
 const sessionPersonas = new Map();
@@ -406,26 +409,32 @@ app.post("/set-persona-from-patient", async (req, res) => {
 });
 
 // ========== TRANSCRIPTS ==========
-app.get("/session/:session_id/transcripts", async (req, res) => {
+app.get("/session/:session_id/transcripts", authMiddleware, async (req, res) => {
   const { session_id } = req.params;
+  const user_id = req.user.user_id;
   const { data, error } = await supabase
     .from("session_transcripts")
-    .select("*")
+    .select("*, sessions(user_id)")
     .eq("session_id", session_id)
+    .eq("sessions.user_id", user_id)
     .order("created_at", { ascending: true });
   if (error) return res.status(500).json({ error: error.message });
+  if (!data || data.length === 0) {
+    return res.status(404).json({ message: "Transkrip tidak ditemukan atau Anda tidak punya akses." });
+  }
   res.json(data);
 });
 
 // ========== SESSION MANAGEMENT ==========
-app.post("/start-session", async (req, res) => {
+app.post("/start-session", authMiddleware, async (req, res) => {
+  const { patient_id } = req.body;
+  const user_id = req.user.user_id;
   try {
-    const { user_id, patient_id } = req.body;
     const { data, error } = await supabase
       .from("sessions")
       .insert([
         {
-          user_id: user_id || null,
+          user_id: user_id,
           patient_id: patient_id || null,
           status: "active",
         },
@@ -439,16 +448,21 @@ app.post("/start-session", async (req, res) => {
   }
 });
 
-app.post("/end-session/:session_id", async (req, res) => {
+app.post("/end-session/:session_id", authMiddleware, async (req, res) => {
   try {
     const { session_id } = req.params;
+    const user_id = req.user.user_id;
+
     const { data, error } = await supabase
       .from("sessions")
       .update({ status: "finished", end_time: new Date().toISOString() })
       .eq("session_id", session_id)
+      .eq("user_id", user_id)
       .select()
       .single();
     if (error) throw error;
+    if (!data) return res.status(404).json({ message: "Session tidak ditemukan atau Anda tidak punya akses." });
+    
     res.json({ success: true, session: data });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

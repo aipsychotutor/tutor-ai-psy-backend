@@ -9,21 +9,23 @@ const router = express.Router();
 router.get("/:id", async (req, res) => {
   try {
     const { id } = req.params;
+    const user_id = req.user.user_id;
 
-    console.log("Fetching patient with ID:", id);
+    console.log(`Fetching patient ${id} for user ${user_id}`);
 
     // Query langsung ke Supabase
     const { data: patient, error } = await supabase
       .from("patients")
       .select("*")
       .eq("patient_id", id)
+      .or(`user_id.eq.${user_id},user_id.is.null`)
       .single();
 
     if (error) {
       console.error("Supabase error:", error);
       return res.status(404).json({
         status: "error",
-        message: "Patient not found",
+        message: "Patient not found or you do not have access",
       });
     }
 
@@ -49,11 +51,12 @@ router.get("/:id", async (req, res) => {
 // GET /api/patients - Get all patients
 router.get("/", async (req, res) => {
   try {
+    const user_id = req.user.user_id;
     const { data: patients, error } = await supabase
       .from("patients")
       .select("*")
-      .eq("is_active", true);
-
+      .eq("is_active", true)
+      .or(`user_id.eq.${user_id},user_id.is.null`);
     if (error) {
       throw error;
     }
@@ -70,9 +73,11 @@ router.get("/", async (req, res) => {
 
 router.get("/all", async (req, res) => {
   try {
+    const user_id = req.user.user_id;
     const { data: patients, error } = await supabase
       .from("patients")
-      .select("*"); // ambil semua pasien tanpa filter
+      .select("*") // ambil semua pasien tanpa filter
+      .or(`user_id.eq.${user_id},user_id.is.null`);
 
     if (error) {
       throw error;
@@ -90,6 +95,7 @@ router.get("/all", async (req, res) => {
 
 router.post("/", async (req, res) => {
   try {
+    const user_id = req.user.user_id;
     const {
       patient_name,
       background_story,
@@ -127,6 +133,7 @@ router.post("/", async (req, res) => {
     }
 
     const patientData = {
+      user_id: user_id,
       patient_name,
       background_story,
       personality_type: personality_type || null,
@@ -179,12 +186,14 @@ router.post("/", async (req, res) => {
 router.get("/model/:patientId", async (req, res) => {
   try {
     const { patientId } = req.params;
-    console.log("Fetching avatar for patient:", patientId);
+    const user_id = req.user.user_id;
+    console.log(`Fetching avatar for patient ${patientId} (user ${user_id})`);
 
     const { data, error } = await supabase
       .from("patients")
       .select("avatar_path")
       .eq("patient_id", patientId)
+      .or(`user_id.eq.${user_id},user_id.is.null`)
       .single();
 
     if (error) {
@@ -193,7 +202,8 @@ router.get("/model/:patientId", async (req, res) => {
     }
 
     if (!data || !data.avatar_path) {
-      return res.status(404).json({ message: "Avatar path not found" });
+      // Ini tidak apa-apa, kirim saja path default
+      return res.json({ avatar_path: "models/default.glb" }); 
     }
 
     // Return path aja tanpa full URL (misal: "models/default.glb")

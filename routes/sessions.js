@@ -93,7 +93,8 @@ PENTING: Output HANYA JSON, tanpa teks tambahan.
 // GET /api/sessions
 router.get("/", async (req, res) => {
   try {
-    const { user_id, patient_id, status } = req.query;
+    const { patient_id, status } = req.query;
+    const user_id = req.user.user_id;
 
     let query = supabase
       .from("sessions")
@@ -110,11 +111,8 @@ router.get("/", async (req, res) => {
         )
       `
       )
-      .order("start_time", { ascending: false });
-
-    if (user_id) {
-      query = query.eq("user_id", user_id);
-    }
+      .order("start_time", { ascending: false })
+      .eq("user_id", user_id)
 
     if (patient_id) {
       query = query.eq("patient_id", patient_id);
@@ -156,14 +154,29 @@ router.get("/", async (req, res) => {
 // POST /api/sessions
 router.post("/", async (req, res) => {
   try {
-    const { user_id, patient_id } = req.body;
+    const { patient_id } = req.body;
+    const user_id = req.user.user_id;
+
+    const { data: patient, error: patientError } = await supabase
+      .from("patients")
+      .select("patient_id")
+      .eq("patient_id", patient_id)
+      .or(`user_id.eq.${user_id},user_id.is.null`) // <-- Cek kepemilikan pasien
+      .single();
+
+    if (patientError || !patient) {
+      return res.status(404).json({
+        success: false,
+        message: "Patient tidak ditemukan atau Anda tidak punya akses.",
+      });
+    }
 
     const { data: session, error } = await supabase
       .from("sessions")
       .insert([
         {
-          user_id,
-          patient_id,
+          user_id: user_id,
+          patient_id: patient_id,
           start_time: new Date().toISOString(),
           status: "ongoing",
         },
@@ -190,6 +203,7 @@ router.post("/", async (req, res) => {
 router.get("/:id", async (req, res) => {
   try {
     const { id } = req.params;
+    const user_id = req.user.user_id;
 
     const { data: session, error } = await supabase
       .from("sessions")
@@ -205,6 +219,7 @@ router.get("/:id", async (req, res) => {
       `
       )
       .eq("session_id", id)
+      .eq("user_id", user_id)
       .single();
 
     if (error) throw error;
@@ -212,7 +227,7 @@ router.get("/:id", async (req, res) => {
     if (!session) {
       return res.status(404).json({
         success: false,
-        message: "Session tidak ditemukan",
+        message: "Session tidak ditemukan atau Anda tidak punya akses",
       });
     }
 
@@ -233,6 +248,7 @@ router.get("/:id", async (req, res) => {
 router.patch("/:id", async (req, res) => {
   try {
     const { id } = req.params;
+    const user_id = req.user.user_id;
     const { status, end_time } = req.body;
 
     const validStatuses = ["ongoing", "completed", "cancelled"];
@@ -251,6 +267,7 @@ router.patch("/:id", async (req, res) => {
       .from("sessions")
       .update(updateData)
       .eq("session_id", id)
+      .eq("user_id", user_id)
       .select()
       .single();
 
@@ -259,7 +276,7 @@ router.patch("/:id", async (req, res) => {
     if (!data) {
       return res.status(404).json({
         success: false,
-        message: "Session tidak ditemukan",
+        message: "Session tidak ditemukan atau Anda tidak punya akses",
       });
     }
 
@@ -281,6 +298,21 @@ router.patch("/:id", async (req, res) => {
 router.get("/:session_id/transcripts", async (req, res) => {
   try {
     const { session_id } = req.params;
+    const user_id = req.user.user_id;
+
+    const { data: session, error: sessionError } = await supabase
+      .from("sessions")
+      .select("session_id")
+      .eq("session_id", session_id)
+      .eq("user_id", user_id)
+      .single();
+
+    if (sessionError || !session) {
+      return res.status(404).json({
+        success: false,
+        message: "Session tidak ditemukan atau Anda tidak punya akses",
+      });
+    }
 
     const { data, error } = await supabase
       .from("session_transcripts")
@@ -307,18 +339,20 @@ router.get("/:session_id/transcripts", async (req, res) => {
 router.post("/:session_id/analyze", async (req, res) => {
   try {
     const { session_id } = req.params;
-
+    const user_id = req.user.user_id;
+    
     // 1. Check if session exists and is completed
     const { data: session, error: sessionError } = await supabase
       .from("sessions")
       .select("status, start_time, end_time")
       .eq("session_id", session_id)
+      .eq("user_id", user_id)
       .single();
 
     if (sessionError || !session) {
       return res.status(404).json({
         success: false,
-        message: "Session tidak ditemukan",
+        message: "Session tidak ditemukan atau Anda tidak punya akses",
       });
     }
 
@@ -402,11 +436,27 @@ router.post("/:session_id/analyze", async (req, res) => {
 router.get("/:session_id/evaluation", async (req, res) => {
   try {
     const { session_id } = req.params;
+    const user_id = req.user.user_id;
 
+    const { data: session, error: sessionError } = await supabase
+      .from("sessions")
+      .select("session_id")
+      .eq("session_id", session_id)
+      .eq("user_id", user_id)
+      .single();
+
+    if (sessionError || !session) {
+      return res.status(404).json({
+        success: false,
+        message: "Session tidak ditemukan atau Anda tidak punya akses",
+      });
+    }
+    
     const { data, error } = await supabase
       .from("session_evaluations")
       .select("*")
       .eq("session_id", session_id)
+      .eq("user_id", user_id)
       .single();
 
     if (error && error.code !== "PGRST116") {
