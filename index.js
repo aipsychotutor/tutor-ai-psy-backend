@@ -15,7 +15,6 @@ import reportsRoutes from "./routes/reports.js";
 
 // Middleware
 import authMiddleware from './middleware/authMiddleware.js';
-import authMiddleware from './middleware/roleMiddleware.js';
 
 // ========== CONFIG ==========
 const app = express();
