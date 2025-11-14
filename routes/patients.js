@@ -9,7 +9,11 @@ const router = express.Router();
 router.get("/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const user_id = req.user.user_id;
+    const user_id = req.user?.user_id;
+    if (!user_id) {
+      // Jika ini terjadi, middleware otentikasi bermasalah
+      return res.status(401).json({ status: "error", message: "User not authenticated" });
+    }
 
     console.log(`Fetching patient ${id} for user ${user_id}`);
 

@@ -5,6 +5,11 @@ import jwt from "jsonwebtoken";
 
 const router = express.Router();
 
+console.log("AUTH ROUTE: JWT Secret loaded:", !!process.env.JWT_SECRET);
+if (!process.env.JWT_SECRET) {
+    console.error("KRITIS: JWT_SECRET belum dimuat!");
+}
+
 // Helper buat bikin token JWT
 function generateToken(user) {
     // Tentukan peran (role) berdasarkan flag is_admin
@@ -37,7 +42,7 @@ router.post("/register", async (req, res) => {
             .insert([{ 
                 username, 
                 email, 
-                password_hash: hashed, 
+                password: hashed, 
                 is_admin: false // Default bukan admin
             }])
             // Ambil kolom is_admin, bukan is_guest
@@ -59,33 +64,40 @@ router.post("/register", async (req, res) => {
 // LOGIN
 // ============================
 router.post("/login", async (req, res) => {
-    const { email, password } = req.body;
+    const { email, password: inputPassword } = req.body;
 
     try {
-        if (!email || !password) throw new Error("Email dan password harus diisi");
+        if (!email || !inputPassword) throw new Error("Email dan password harus diisi");
+        console.log("SERVER: Mulai query Supabase untuk login:", email);
 
         const { data, error } = await supabase
             .from("users")
             // Ambil flag is_admin
-            .select("user_id, username, email, password_hash, is_admin") 
+            .select("user_id, username, email, password, is_admin") 
             .eq("email", email)
             .single();
 
+        console.log("SERVER: Query selesai. Data ditemukan:", !!data);
         if (error || !data) throw new Error("User tidak ditemukan");
 
-        const valid = await bcrypt.compare(password, data.password_hash);
+        console.log("SERVER: Mulai membandingkan password.");
+        const valid = await bcrypt.compare(inputPassword, data.password);
+        console.log("SERVER: Perbandingan password selesai.");
         if (!valid) throw new Error("Password salah");
 
-        // Hapus password_hash sebelum generate token dan mengirim ke client
-        const { password_hash, ...safeUser } = data;
+        // Hapus password sebelum generate token dan mengirim ke client
+        const { password: dbPassword, ...safeUser } = data;
+        console.log("SERVER: Mulai membuat token.");
         const token = generateToken(safeUser);
-        
+        console.log("SERVER: Token berhasil dibuat.");
+        console.log();
         // Tentukan peran untuk dikirim ke client
         const role = safeUser.is_admin ? 'admin' : 'user';
 
         // Kirim kembali data user dengan role
         res.json({ status: "ok", user: { ...safeUser, role: role }, token });
     } catch (err) {
+        console.error("SERVER ERROR LOG:", err.message);
         res.status(400).json({ status: "error", message: err.message });
     }
 });

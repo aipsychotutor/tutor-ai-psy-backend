@@ -34,13 +34,13 @@ const voiceID = "21m00Tcm4TlvDq8ikWAM";
 
 const GEMINI_API_URL =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
-const MODEL_API_URL = process.env.MODEL_API_URL || 'http://localhost:3001'; // Changed to 3001 to avoid conflict
+// const MODEL_API_URL = process.env.MODEL_API_URL || 'http://localhost:3001'; // Changed to 3001 to avoid conflict
 
 // ========== ROUTE REGISTER ==========
 app.use("/api/auth", authRoutes);
-app.use("/api/patients", authMiddleware, patientRoutes);
-app.use("/api/sessions", authMiddleware, sessionsRoutes);
-app.use("/api/reports", authMiddleware, reportsRoutes);
+app.use("/api/patients", authMiddleware(['user', 'admin']), patientRoutes);
+app.use("/api/sessions", authMiddleware(['user', 'admin']), sessionsRoutes);
+app.use("/api/reports", authMiddleware(['user', 'admin']), reportsRoutes);
 
 // ========== PERSONA SYSTEM ==========
 const sessionPersonas = new Map();
