@@ -1,11 +1,17 @@
 import { exec } from "child_process";
 import cors from "cors";
-import dotenv from "dotenv";
-dotenv.config();
+import {
+  GEMINI_API_URL,
+  geminiApiKey,
+  elevenLabsApiKey,
+  voiceID,
+} from "./constant.js";
 import express from "express";
 import { promises as fs } from "fs";
 import axios from "axios";
 import { supabase } from "./supabase.js";
+import dotenv from "dotenv";
+dotenv.config();
 
 // Routes
 import authRoutes from "./routes/auth.js";
@@ -26,15 +32,6 @@ app.use(
     credentials: true,
   })
 );
-
-// ========== KEYS ==========
-const geminiApiKey = process.env.GEMINI_API_KEY;
-const elevenLabsApiKey = process.env.ELEVEN_LABS_API_KEY;
-const voiceID = "21m00Tcm4TlvDq8ikWAM";
-
-const GEMINI_API_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
-// const MODEL_API_URL = process.env.MODEL_API_URL || 'http://localhost:3001'; // Changed to 3001 to avoid conflict
 
 // ========== ROUTE REGISTER ==========
 app.use("/api/auth", authRoutes);
@@ -599,11 +596,9 @@ app.get(
       .order("created_at", { ascending: true });
     if (error) return res.status(500).json({ error: error.message });
     if (!data || data.length === 0) {
-      return res
-        .status(404)
-        .json({
-          message: "Transkrip tidak ditemukan atau Anda tidak punya akses.",
-        });
+      return res.status(404).json({
+        message: "Transkrip tidak ditemukan atau Anda tidak punya akses.",
+      });
     }
     res.json(data);
   }
@@ -646,11 +641,9 @@ app.post("/end-session/:session_id", authMiddleware, async (req, res) => {
       .single();
     if (error) throw error;
     if (!data)
-      return res
-        .status(404)
-        .json({
-          message: "Session tidak ditemukan atau Anda tidak punya akses.",
-        });
+      return res.status(404).json({
+        message: "Session tidak ditemukan atau Anda tidak punya akses.",
+      });
 
     res.json({ success: true, session: data });
   } catch (err) {

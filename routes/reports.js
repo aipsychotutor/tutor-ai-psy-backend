@@ -46,24 +46,24 @@ router.get("/evaluation/:session_id", async (req, res) => {
     const user_id = req.user.user_id;
 
     const { data: session, error: sessionError } = await supabase
-      .from("sessions")
-      .select("session_id")
-      .eq("session_id", session_id)
-      .eq("user_id", user_id) // <-- Cek kepemilikan
-      .single();
+      .from("sessions")
+      .select("session_id")
+      .eq("session_id", session_id)
+      .eq("user_id", user_id) // <-- Cek kepemilikan
+      .single();
 
-    if (sessionError || !session) {
-      return res
-        .status(404)
-        .json({ message: "Sesi tidak ditemukan atau Anda tidak punya akses." });
-    }
-    
+    if (sessionError || !session) {
+      return res
+        .status(404)
+        .json({ message: "Sesi tidak ditemukan atau Anda tidak punya akses." });
+    }
+
     // 2. AMBIL DATA: Jika lolos, baru ambil dari "Lemari Evaluasi"
-    const { data, error } = await supabase
-      .from("session_evaluations")
-      .select("*")
-      .eq("session_id", session_id) // <-- Cukup pakai session_id
-      .single();
+    const { data, error } = await supabase
+      .from("session_evaluations")
+      .select("*")
+      .eq("session_id", session_id) // <-- Cukup pakai session_id
+      .single();
 
     if (error && error.code !== "PGRST116") throw error;
 
@@ -165,7 +165,9 @@ router.get("/patient/:patient_id", async (req, res) => {
     if (patientError || !patient) {
       return res
         .status(404)
-        .json({ message: "Patient tidak ditemukan atau Anda tidak punya akses." });
+        .json({
+          message: "Patient tidak ditemukan atau Anda tidak punya akses.",
+        });
     }
 
     let query = supabase

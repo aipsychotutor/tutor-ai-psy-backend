@@ -24,7 +24,6 @@ router.get("/:id", async (req, res) => {
       .from("patients")
       .select("*")
       .eq("patient_id", id)
-      .or(`user_id.eq.${user_id},is_global.eq.true`)
       .single();
 
     if (error) {
