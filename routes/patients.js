@@ -11,9 +11,11 @@ router.get("/:id", async (req, res) => {
     const { id } = req.params;
     const user_id = req.user?.user_id;
     if (!user_id) {
-      // Jika ini terjadi, middleware otentikasi bermasalah
-      return res.status(401).json({ status: "error", message: "User not authenticated" });
-    }
+      // Jika ini terjadi, middleware otentikasi bermasalah
+      return res
+        .status(401)
+        .json({ status: "error", message: "User not authenticated" });
+    }
 
     console.log(`Fetching patient ${id} for user ${user_id}`);
 
@@ -22,7 +24,7 @@ router.get("/:id", async (req, res) => {
       .from("patients")
       .select("*")
       .eq("patient_id", id)
-      .or(`user_id.eq.${user_id},user_id.is.null`)
+      .or(`user_id.eq.${user_id},is_global.eq.true`)
       .single();
 
     if (error) {
@@ -54,13 +56,18 @@ router.get("/:id", async (req, res) => {
 
 // GET /api/patients - Get all patients
 router.get("/", async (req, res) => {
+  const role = req.user.role;
   try {
     const user_id = req.user.user_id;
-    const { data: patients, error } = await supabase
-      .from("patients")
-      .select("*")
-      .eq("is_active", true)
-      .or(`user_id.eq.${user_id},user_id.is.null`);
+
+    const { data: patients, error } =
+      role === "admin"
+        ? await supabase.from("patients").select("*, users(username)")
+        : await supabase
+            .from("patients")
+            .select("*")
+            .or(`user_id.eq.${user_id},is_global.eq.true`)
+            .eq("is_active", true);
     if (error) {
       throw error;
     }
@@ -75,31 +82,32 @@ router.get("/", async (req, res) => {
   }
 });
 
-router.get("/all", async (req, res) => {
-  try {
-    const user_id = req.user.user_id;
-    const { data: patients, error } = await supabase
-      .from("patients")
-      .select("*") // ambil semua pasien tanpa filter
-      .or(`user_id.eq.${user_id},user_id.is.null`);
+// router.get("/all", async (req, res) => {
+//   try {
+//     const user_id = req.user.user_id;
+//     const { data: patients, error } = await supabase
+//       .from("patients")
+//       .select("*") // ambil semua pasien tanpa filter
+//       .or(`user_id.eq.${user_id},is_global.eq.true`);
 
-    if (error) {
-      throw error;
-    }
+//     if (error) {
+//       throw error;
+//     }
 
-    return res.json(patients);
-  } catch (error) {
-    console.error("Error fetching all patients:", error);
-    return res.status(500).json({
-      status: "error",
-      message: error.message,
-    });
-  }
-});
+//     return res.json(patients);
+//   } catch (error) {
+//     console.error("Error fetching all patients:", error);
+//     return res.status(500).json({
+//       status: "error",
+//       message: error.message,
+//     });
+//   }
+// });
 
 router.post("/", async (req, res) => {
   try {
     const user_id = req.user.user_id;
+
     const {
       patient_name,
       background_story,
@@ -110,6 +118,7 @@ router.post("/", async (req, res) => {
       occupation,
       marital_status,
       personality_traits,
+      is_global,
     } = req.body;
 
     if (!patient_name || !background_story) {
@@ -150,6 +159,7 @@ router.post("/", async (req, res) => {
       avatar_path: "models/default.glb",
       profile_image: null,
       is_active: true,
+      is_global: is_global || false,
     };
 
     console.log("Creating patient with data:", patientData);
@@ -207,7 +217,7 @@ router.get("/model/:patientId", async (req, res) => {
 
     if (!data || !data.avatar_path) {
       // Ini tidak apa-apa, kirim saja path default
-      return res.json({ avatar_path: "models/default.glb" }); 
+      return res.json({ avatar_path: "models/default.glb" });
     }
 
     // Return path aja tanpa full URL (misal: "models/default.glb")
