@@ -264,6 +264,7 @@ router.get("/user/me/statistics", async (req, res) => {
         session_evaluations (
           empathy_score,
           question_score,
+          ethics_score
         )
       `
       )
@@ -298,6 +299,7 @@ router.get("/user/me/statistics", async (req, res) => {
           const e = s.session_evaluations;
           acc.empathy += e.empathy_score || 0;
           acc.question += e.question_score || 0;
+          acc.ethics += e.ethics_score || 0;
           return acc;
         },
         { empathy: 0, question: 0, ethics: 0 }

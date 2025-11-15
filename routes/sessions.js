@@ -1125,7 +1125,6 @@ router.post("/:session_id/analyze", async (req, res) => {
           model_statistics: JSON.stringify(modelAnalysis.statistics),
           total_questions: modelAnalysis.total_questions,
           total_statements: modelAnalysis.total_statements,
-          prosody_statistics: aggregateProsody,
         },
       ])
       .select()
