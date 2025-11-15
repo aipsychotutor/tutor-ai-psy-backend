@@ -28,11 +28,12 @@ function generateToken(user) {
 // ============================
 router.post("/register", async (req, res) => {
     const { username, email, password } = req.body;
+    const passwordRegex = /^(?=.[a-z])(?=.[A-Z])(?=.*[0-9])(?=.{8,})/;
 
     try {
         if (!email || !password || !username)
             throw new Error("Username, email, dan password harus diisi");
-        if (password.length < 6) throw new Error("Password minimal 6 karakter");
+        if (!passwordRegex.test(password)) throw new Error("Password minimal 6 karakter");
 
         const hashed = await bcrypt.hash(password, 10);
 
@@ -56,6 +57,7 @@ router.post("/register", async (req, res) => {
         // Kirim kembali data user dengan role yang sudah ditentukan
         res.json({ status: "ok", user: { ...user, role: 'user' }, token });
     } catch (err) {
+        console.error("SERVER ERROR LOG:", err.message);
         res.status(400).json({ status: "error", message: err.message });
     }
 });
