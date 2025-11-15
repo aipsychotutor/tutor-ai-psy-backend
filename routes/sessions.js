@@ -601,10 +601,10 @@ router.get("/stats", async (req, res) => {
       .select(`
           empathy_score,
           question_score,
-          sessions (user_id) // Ambil user_id dari tabel sessions yang terhubung
+          sessions!inner(user_id)// Ambil user_id dari tabel sessions yang terhubung
       `)
       // Filter evaluasi hanya jika sesi terhubung dimiliki oleh user_id yang sekarang
-      .eq('sessions.user_id', user_id); 
+      .filter('sessions.user_id', 'eq', user_id);
       
   if (evalError) throw evalError;
   console.log(`1. Supabase returned ${evaluations.length} evaluation records.`);
