@@ -65,8 +65,7 @@ router.get("/", async (req, res) => {
         : await supabase
             .from("patients")
             .select("*")
-            .or(`user_id.eq.${user_id},is_global.eq.true`)
-            .eq("is_active", true);
+            .or(`user_id.eq.${user_id},is_global.eq.true`);
     if (error) {
       throw error;
     }
