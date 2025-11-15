@@ -33,8 +33,6 @@ router.post("/register", async (req, res) => {
   try {
     if (!email || !password || !username)
       throw new Error("Username, email, dan password harus diisi");
-    if (!passwordRegex.test(password))
-      throw new Error("Password minimal 6 karakter");
 
     const hashed = await bcrypt.hash(password, 10);
 
