@@ -418,7 +418,7 @@ async function generateFeedbackWithGemini(
       .join("\n");
 
     const feedbackPrompt = `
-Anda adalah supervisor psikologi yang berpengalaman. Berikan feedback konstruktif berdasarkan DUA set data berikut: Analisis AI dan Data Intonasi.
+Anda adalah supervisor psikologi yang berpengalaman yang sedang menilai calon psikolog/konselor. Berikan feedback dan analisis konstruktif berdasarkan DUA set data berikut: Analisis AI dan Data Intonasi.
 
 HASIL ANALISIS MODEL AI (TEKS):
 - Skor Pertanyaan: ${stats.question_score}/100
@@ -439,19 +439,18 @@ TRANSKRIP SESI (untuk konteks):
 ${conversationText}
 
 ---
-DATA INTOMASI KESELURUHAN (HANYA DARI USER/PASIEN):
+DATA INTONASI KESELURUHAN (DARI USER/KONSELOR):
 Rata-rata Kecepatan Bicara: ${aggregateProsody.avg_speaking_rate.toFixed(2)} (Normal: ~3-5. Lebih tinggi = lebih cepat)
 Rata-rata Variabilitas Energi (energy_std): ${aggregateProsody.avg_energy_std.toFixed(4)} (Tinggi = Dinamis/Ekspresif, Rendah = Monoton/Datar)
 Rata-rata Rasio Diam (Hening): ${(aggregateProsody.avg_silence_ratio * 100).toFixed(0)}% (Tinggi = banyak jeda, mungkin ragu-ragu atau berpikir)
-Total Jeda Pasien: ${aggregateProsody.total_pauses} kali
+Total Jeda Konselor: ${aggregateProsody.total_pauses} kali
 ---
 
-ANALISIS ANDA (HANYA JAWAB DALAM FORMAT JSON):
+ANALISIS ANDA (HANYA JAWAB DALAM FORMAT JSON YANG VALID):
 {
   "empathy_score": ${stats.empathy_score},
   "question_score": ${stats.question_score},
-  "ethics_score": ${Math.round(stats.empathy_score * 0.5 + stats.question_score * 0.5)},
-  "feedback_text": "<Feedback umum 1 paragraf. WAJIB sertakan analisis intonasi Anda di sini. Jelaskan apa arti dari data 'Variabilitas Energi' dan 'Kecepatan Bicara' konselor dalam konteks transkrip. Apakah konselor terdengar cemas (cepat, monoton)? Atau tenang (normal, dinamis)? Atau ragu-ragu (rasio diam tinggi)?>",
+  "feedback_text": "<Feedback umum 1 paragraf. WAJIB sertakan analisis intonasi Anda di sini. Gunakan data 'Variabilitas Energi', 'Kecepatan Bicara', dan 'Rasio Diam' untuk menganalisis 'engagement' dan 'rapport' konselor. Jelaskan BAGAIMANA data intonasi tersebut memengaruhi persepsi empati klien. Contoh: Apakah 'Variabilitas Energi' yang rendah (monoton) membuat pernyataan empatik (dari transkrip) terdengar tidak tulus? Apakah 'Kecepatan Bicara' yang tinggi (terburu-buru) mengurangi kesempatan klien untuk berefleksi? Apakah 'Rasio Diam' yang tinggi menunjukkan konselor sedang berpikir reflektif (baik) atau ragu-ragu (kurang percaya diri)? Kaitkan temuan intonasi ini dengan skor AI yang didapat. (Gunakan \\n untuk newline JIKA PERLU. Seluruh feedback ini HARUS dalam satu string JSON tunggal)>","feedback_text": "<Feedback umum 1 paragraf. WAJIB sertakan analisis intonasi Anda di sini. Jelaskan apa arti dari data 'Variabilitas Energi' dan 'Kecepatan Bicara' konselor dalam konteks transkrip. Apakah konselor terdengar cemas (cepat, monoton)? Atau tenang (normal, dinamis)? Atau ragu-ragu (rasio diam tinggi)?(Gunakan \\n untuk newline JIKA PERLU. Seluruh feedback ini HARUS dalam satu string JSON tunggal)>",
   "strengths": ["<poin kekuatan 1 berdasarkan analisis AI>", "<poin kekuatan 2>"],
   "improvements": ["<poin perbaikan 1 berdasarkan analisis AI>", "<poin perbaikan 2>"]
 }
@@ -476,7 +475,7 @@ ANALISIS ANDA (HANYA JAWAB DALAM FORMAT JSON):
             ],
             generationConfig: {
               temperature: 0.7,
-              maxOutputTokens: 2000,
+              maxOutputTokens: 8192,
             },
           },
           {
@@ -515,16 +514,40 @@ ANALISIS ANDA (HANYA JAWAB DALAM FORMAT JSON):
     // --- END: Perubahan Logika Retry ---
 
 
-    let rawText =
-      geminiRes.data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
-    rawText = rawText.replace(/```json|```/g, "").trim();
+    // [KODE BARU - LEBIH TANGGUH]
+   let rawText =
+     geminiRes.data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
 
-    const feedback = JSON.parse(rawText);
+   // 1. Bersihkan dulu markdown fences
+   rawText = rawText.replace(/```json|```/g, "").trim();
+
+   // 2. Temukan blok JSON yang valid (dari { pertama hingga } terakhir)
+   const startIndex = rawText.indexOf('{');
+   const endIndex = rawText.lastIndexOf('}');
+
+   if (startIndex === -1 || endIndex === -1 || endIndex < startIndex) {
+       console.error("❌ Gagal menemukan objek JSON yang valid di respons Gemini. Teks Mentah:", rawText);
+       throw new Error("Struktur JSON tidak valid dari respons Gemini.");
+   }
+
+   // 3. Ekstrak hanya string JSON-nya
+   const jsonString = rawText.substring(startIndex, endIndex + 1);
+
+   // 4. Parse string yang sudah bersih
+   let feedback;
+   try {
+     feedback = JSON.parse(jsonString);
+   } catch (parseError) {
+     console.error("❌ Error parsing JSON yang sudah diekstrak:", parseError.message);
+     console.error("String JSON yang gagal di-parse:", jsonString);
+     // Jika masih gagal, lempar error asli dari catch luar
+     throw new Error(`JSON parse error after extraction: ${parseError.message}`);
+   }
 
     console.log("✓ Gemini feedback generated");
 
     return {
-      feedback_text: feedback.feedback_text || "Feedback tidak tersedia",
+      feedback_text: feedback.feedback_text,
       strengths: Array.isArray(feedback.strengths) ? feedback.strengths : [],
       improvements: Array.isArray(feedback.improvements)
         ? feedback.improvements
@@ -1095,7 +1118,6 @@ router.post("/:session_id/analyze", async (req, res) => {
           session_id,
           empathy_score: modelAnalysis.statistics.empathy_score,
           question_score: modelAnalysis.statistics.question_score,
-          ethics_score: ethicsScore,
           feedback_text: geminiFeedback.feedback_text,
           strengths: geminiFeedback.strengths,
           improvements: geminiFeedback.improvements,
@@ -1103,6 +1125,7 @@ router.post("/:session_id/analyze", async (req, res) => {
           model_statistics: JSON.stringify(modelAnalysis.statistics),
           total_questions: modelAnalysis.total_questions,
           total_statements: modelAnalysis.total_statements,
+          prosody_statistics: aggregateProsody,
         },
       ])
       .select()

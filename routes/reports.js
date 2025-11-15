@@ -72,7 +72,6 @@ router.get("/evaluation/:session_id", async (req, res) => {
         session_id,
         empathy_score: 0,
         question_score: 0,
-        ethics_score: 0,
         feedback_text: null,
         evaluated: false,
       });
@@ -90,7 +89,7 @@ router.post("/evaluation/:session_id", async (req, res) => {
   try {
     const { session_id } = req.params;
     const user_id = req.user.user_id;
-    const { empathy_score, question_score, ethics_score, feedback_text } =
+    const { empathy_score, question_score, feedback_text } =
       req.body;
 
     const { data: session, error: sessionError } = await supabase
@@ -117,9 +116,7 @@ router.post("/evaluation/:session_id", async (req, res) => {
         .status(400)
         .json({ error: "question_score harus antara 0-100" });
     }
-    if (ethics_score && (ethics_score < 0 || ethics_score > 100)) {
-      return res.status(400).json({ error: "ethics_score harus antara 0-100" });
-    }
+
 
     // Cek apakah sudah ada
     const { data: result, error: upsertError } = await supabase
@@ -129,7 +126,6 @@ router.post("/evaluation/:session_id", async (req, res) => {
         user_id: user_id, // <-- SUNTIKKAN user_id dari token
         empathy_score: empathy_score || 0,
         question_score: question_score || 0,
-        ethics_score: ethics_score || 0,
         feedback_text: feedback_text || null,
       })
       .eq("session_id", session_id) // Kunci untuk 'update' jika ada     // Kunci tambahan untuk 'update'
@@ -183,7 +179,6 @@ router.get("/patient/:patient_id", async (req, res) => {
         session_evaluations (
           empathy_score,
           question_score,
-          ethics_score,
           feedback_text,
           created_at
         )
@@ -210,7 +205,6 @@ router.get("/patient/:patient_id", async (req, res) => {
           const e = s.session_evaluations;
           acc.empathy += e.empathy_score || 0;
           acc.question += e.question_score || 0;
-          acc.ethics += e.ethics_score || 0;
           return acc;
         },
         { empathy: 0, question: 0, ethics: 0 }
@@ -270,7 +264,6 @@ router.get("/user/me/statistics", async (req, res) => {
         session_evaluations (
           empathy_score,
           question_score,
-          ethics_score
         )
       `
       )
@@ -305,7 +298,6 @@ router.get("/user/me/statistics", async (req, res) => {
           const e = s.session_evaluations;
           acc.empathy += e.empathy_score || 0;
           acc.question += e.question_score || 0;
-          acc.ethics += e.ethics_score || 0;
           return acc;
         },
         { empathy: 0, question: 0, ethics: 0 }
