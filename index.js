@@ -219,9 +219,10 @@ app.post("/chat", async (req, res) => {
   console.log("🚀 [CHAT] New chat request received");
   console.log("=".repeat(70));
 
-  const { message: userMessage, session_id } = req.body;
+  const { message: userMessage, prosody_data,session_id } = req.body;
   console.log("📥 [INPUT] User Message:", userMessage);
   console.log("📥 [INPUT] Session ID:", session_id);
+  console.log("📥 [INPUT] Prosody Data:", prosody_data); 
 
   // ========== VALIDATION ==========
   if (!userMessage) {
@@ -464,14 +465,14 @@ app.post("/chat", async (req, res) => {
     // ========== SAVE TO DATABASE ==========
     console.log("\n💾 [DATABASE] Saving transcripts to Supabase...");
     const transcriptsToInsert = [
-      { session_id, message_role: "user", message_text: userMessage },
+      { session_id, message_role: "user", message_text: userMessage ,prosody_data: prosody_data || null},
       ...messages.map((m) => ({
         session_id,
         message_role: "assistant",
         message_text: m.text,
       })),
     ];
-
+    
     console.log(
       "📝 [DATABASE] Inserting",
       transcriptsToInsert.length,

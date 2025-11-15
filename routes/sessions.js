@@ -400,7 +400,11 @@ function detectPatterns(results) {
 // HELPER: Generate Feedback with Gemini
 // ============================================================================
 
-async function generateFeedbackWithGemini(transcripts, modelAnalysis) {
+async function generateFeedbackWithGemini(
+  transcripts,
+  modelAnalysis,
+  aggregateProsody
+) {
   try {
     const stats = modelAnalysis.statistics;
 
@@ -414,9 +418,9 @@ async function generateFeedbackWithGemini(transcripts, modelAnalysis) {
       .join("\n");
 
     const feedbackPrompt = `
-Anda adalah supervisor psikologi yang berpengalaman. Berikan feedback konstruktif berdasarkan analisis AI berikut:
+Anda adalah supervisor psikologi yang berpengalaman. Berikan feedback konstruktif berdasarkan DUA set data berikut: Analisis AI dan Data Intonasi.
 
-HASIL ANALISIS MODEL AI:
+HASIL ANALISIS MODEL AI (TEKS):
 - Skor Pertanyaan: ${stats.question_score}/100
 - Skor Empati: ${stats.empathy_score}/100
 - Skor Keseluruhan: ${stats.overall_score}/100
@@ -426,54 +430,90 @@ ${Object.entries(stats.question_percentages)
   .map(([k, v]) => `- ${k}: ${v}%`)
   .join("\n")}
 
-DISTRIBUSI TINGKAT EMPATI:
+DISTRIBUSSI TINGKAT EMPATI:
 ${Object.entries(stats.empathy_percentages)
   .map(([k, v]) => `- ${k}: ${v}%`)
   .join("\n")}
 
-POLA TERDETEKSI:
-${stats.patterns.map((p) => `- ${p.type}: ${JSON.stringify(p)}`).join("\n")}
-
 TRANSKRIP SESI (untuk konteks):
 ${conversationText}
 
-Berikan feedback dalam format JSON:
+---
+DATA INTOMASI KESELURUHAN (HANYA DARI USER/PASIEN):
+Rata-rata Kecepatan Bicara: ${aggregateProsody.avg_speaking_rate.toFixed(2)} (Normal: ~3-5. Lebih tinggi = lebih cepat)
+Rata-rata Variabilitas Energi (energy_std): ${aggregateProsody.avg_energy_std.toFixed(4)} (Tinggi = Dinamis/Ekspresif, Rendah = Monoton/Datar)
+Rata-rata Rasio Diam (Hening): ${(aggregateProsody.avg_silence_ratio * 100).toFixed(0)}% (Tinggi = banyak jeda, mungkin ragu-ragu atau berpikir)
+Total Jeda Pasien: ${aggregateProsody.total_pauses} kali
+---
+
+ANALISIS ANDA (HANYA JAWAB DALAM FORMAT JSON):
 {
-  "feedback_text": "<feedback konstruktif 2-3 paragraf dalam bahasa Indonesia yang menjelaskan hasil analisis AI dan memberikan konteks>",
-  "strengths": ["<kekuatan 1>", "<kekuatan 2>", "<kekuatan 3>"],
-  "improvements": ["<area perbaikan 1 dengan saran spesifik>", "<area perbaikan 2 dengan saran spesifik>", "<area perbaikan 3 dengan saran spesifik>"]
+  "empathy_score": ${stats.empathy_score},
+  "question_score": ${stats.question_score},
+  "ethics_score": ${Math.round(stats.empathy_score * 0.5 + stats.question_score * 0.5)},
+  "feedback_text": "<Feedback umum 1 paragraf. WAJIB sertakan analisis intonasi Anda di sini. Jelaskan apa arti dari data 'Variabilitas Energi' dan 'Kecepatan Bicara' konselor dalam konteks transkrip. Apakah konselor terdengar cemas (cepat, monoton)? Atau tenang (normal, dinamis)? Atau ragu-ragu (rasio diam tinggi)?>",
+  "strengths": ["<poin kekuatan 1 berdasarkan analisis AI>", "<poin kekuatan 2>"],
+  "improvements": ["<poin perbaikan 1 berdasarkan analisis AI>", "<poin perbaikan 2>"]
 }
-
-PEDOMAN:
-- Feedback harus merujuk pada hasil analisis AI
-- Jelaskan apa arti dari distribusi pertanyaan dan empati
-- Berikan contoh konkret dari transkrip jika relevan
-- Strengths: 2-4 poin kekuatan yang spesifik
-- Improvements: 2-4 poin area perbaikan dengan saran actionable
-- Gunakan bahasa yang supportive namun objektif
-
-PENTING: Output HANYA JSON yang valid, tanpa teks tambahan atau markdown.
 `;
 
     console.log("🤖 Generating feedback with Gemini...");
 
-    const geminiRes = await axios.post(
-      `${GEMINI_API_URL}?key=${geminiApiKey}`,
-      {
-        contents: [
+    // --- START: Perubahan Logika Retry ---
+    let geminiRes;
+    const maxRetries = 3;
+    let delay = 2000; // Jeda awal 2 detik
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        geminiRes = await axios.post(
+          `${GEMINI_API_URL}?key=${geminiApiKey}`,
           {
-            parts: [{ text: feedbackPrompt }],
+            contents: [
+              {
+                parts: [{ text: feedbackPrompt }],
+              },
+            ],
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 2000,
+            },
           },
-        ],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 2000,
-        },
-      },
-      {
-        timeout: 30000,
+          {
+            timeout: 30000,
+          }
+        );
+
+        // Jika berhasil (status 200), keluar dari loop
+        if (geminiRes.status === 200 && geminiRes.data) {
+          console.log(`✓ Gemini call successful on attempt ${attempt}`);
+          break;
+        }
+      } catch (error) {
+        console.warn(`⚠️ Gemini attempt ${attempt} failed: ${error.message}`);
+        
+        // Cek jika error bisa di-retry (503 Service Unavailable atau 429 Too Many Requests)
+        if (error.response && (error.response.status === 503 || error.response.status === 429)) {
+          if (attempt === maxRetries) {
+            console.error("❌ Max retries reached for Gemini. Giving up.");
+            throw error; // Lempar error terakhir jika sudah max retries
+          }
+          console.log(`   Retrying in ${delay / 1000} seconds...`);
+          await new Promise(res => setTimeout(res, delay));
+          delay *= 2; // Double jeda (exponential backoff)
+        } else {
+          // Jika error lain (spt 400 Bad Request), langsung lempar error
+          console.error("❌ Non-retryable error from Gemini:", (error.response?.data || error.message));
+          throw error; 
+        }
       }
-    );
+    }
+
+    if (!geminiRes) {
+      throw new Error("Failed to get response from Gemini after all retries.");
+    }
+    // --- END: Perubahan Logika Retry ---
+
 
     let rawText =
       geminiRes.data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
@@ -997,11 +1037,42 @@ router.post("/:session_id/analyze", async (req, res) => {
     console.log("\n🤖 Step 1: Analyzing with AI models...");
     const modelAnalysis = await analyzeWithDualModels(transcripts);
 
+    console.log("\n🎵 Step 1B: Aggregating prosody data...");
+    const userMessages = transcripts.filter(t => t.message_role === 'user');
+    const validProsodyData = userMessages
+    .map(msg => msg.prosody_data)
+    .filter(data => data != null); // Filter pesan yang tidak punya data (mungkin null)
+
+    let aggregateProsody = {
+      total_speech_duration: 0,
+      avg_speaking_rate: 0,
+      avg_energy_std: 0,
+      avg_silence_ratio: 0,
+      total_pauses: 0,
+    };
+
+    if (validProsodyData.length > 0) {
+      const sum = (key) => validProsodyData.reduce((acc, data) => acc + (parseFloat(data[key]) || 0), 0);
+
+      aggregateProsody.total_speech_duration = sum('duration');
+      aggregateProsody.total_pauses = sum('num_pauses');
+      
+      // Hitung rata-rata
+      aggregateProsody.avg_speaking_rate = sum('speaking_rate') / validProsodyData.length;
+      aggregateProsody.avg_energy_std = sum('energy_std') / validProsodyData.length;
+      aggregateProsody.avg_silence_ratio = sum('silence_ratio') / validProsodyData.length;
+      console.log("✅ Prosody data aggregated:", aggregateProsody);
+    } else {
+      console.log("⚠️ No valid prosody data found for this session.");
+    }
+
+
     // 5. Generate Feedback with Gemini
     console.log("\n💬 Step 2: Generating feedback with Gemini...");
     const geminiFeedback = await generateFeedbackWithGemini(
       transcripts,
-      modelAnalysis
+      modelAnalysis,
+      aggregateProsody
     );
 
     // 6. Calculate ethics score (placeholder - could be enhanced)
