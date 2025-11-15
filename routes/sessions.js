@@ -417,7 +417,10 @@ async function generateFeedbackWithGemini(
       )
       .join("\n");
 
-    const feedbackPrompt = `
+      let feedbackPrompt="";
+      const hasVocalData = aggregateProsody.avg_speaking_rate > 0;
+
+    const commonPromptHeader = `
 Anda adalah supervisor psikologi yang berpengalaman yang sedang menilai calon psikolog/konselor. Berikan feedback dan analisis konstruktif berdasarkan DUA set data berikut: Analisis AI dan Data Intonasi.
 
 HASIL ANALISIS MODEL AI (TEKS):
@@ -437,7 +440,13 @@ ${Object.entries(stats.empathy_percentages)
 
 TRANSKRIP SESI (untuk konteks):
 ${conversationText}
+`;
 
+  if(hasVocalData){
+     console.log("🎙️ Generating feedback WITH vocal analysis...");
+      feedbackPrompt = `
+${commonPromptHeader}
+  
 ---
 DATA INTONASI KESELURUHAN (DARI USER/KONSELOR):
 Rata-rata Kecepatan Bicara: ${aggregateProsody.avg_speaking_rate.toFixed(2)} (Normal: ~3-5. Lebih tinggi = lebih cepat)
@@ -455,7 +464,24 @@ ANALISIS ANDA (HANYA JAWAB DALAM FORMAT JSON YANG VALID):
   "improvements": ["<poin perbaikan 1 berdasarkan analisis AI>", "<poin perbaikan 2>"]
 }
 `;
+  } else{
+    console.log("📝 Generating feedback WITHOUT vocal analysis (text only)...");
+      feedbackPrompt = `
+${commonPromptHeader}
+---
+(Tidak ada data intonasi vokal yang tersedia untuk sesi ini.)
+---
 
+ANALISIS ANDA (HANYA JAWAB DALAM FORMAT JSON):
+{
+  "strengths": ["<Kekuatan 1 konselor berdasarkan Data 1 & 2 (Teks)>", "<Kekuatan 2 konselor (Teks)>"],
+  "improvements": ["<Perbaikan 1 konselor berdasarkan Data 1 & 2 (Teks)>", "<Perbaikan 2 konselor (Teks)>"],
+  
+  "feedback_text": <Feedback umum 1 paragraf. Gunakan Hasil Analisis Model AI untuk menganalisis empati dan teknik bertanya konselor.(Gunakan \\n untuk newline JIKA PERLU. Seluruh feedback ini HARUS dalam satu string JSON tunggal)>",
+}
+`;
+    }
+  
     console.log("🤖 Generating feedback with Gemini...");
 
     // --- START: Perubahan Logika Retry ---

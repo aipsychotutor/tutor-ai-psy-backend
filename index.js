@@ -264,33 +264,86 @@ app.post("/chat", async (req, res) => {
     console.log("✅ [PROMPT] Generated prompt (first 200 chars):");
     console.log("   ", prompt.substring(0, 200) + "...");
 
-    // ========== CALL GEMINI API ==========
-    console.log("\n🤖 [GEMINI] Calling Gemini API...");
-    const geminiStartTime = Date.now();
 
-    const geminiRes = await fetch(`${GEMINI_API_URL}?key=${geminiApiKey}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-    });
+    // ========== CALL GEMINI API (with Retry) ==========
+    const maxRetries = 3;
+    const retryDelay = 2000; // 2 detik
+    let geminiRes;
+    let geminiDuration;
 
-    const geminiDuration = Date.now() - geminiStartTime;
-    console.log(`✅ [GEMINI] Response received in ${geminiDuration}ms`);
-    console.log("   Status:", geminiRes.status, geminiRes.statusText);
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      console.log(
+        `\n🤖 [GEMINI] Calling Gemini API (Attempt ${attempt}/${maxRetries})...`
+      );
+      const geminiStartTime = Date.now();
 
+      try {
+        geminiRes = await fetch(`${GEMINI_API_URL}?key=${geminiApiKey}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+        });
+
+        geminiDuration = Date.now() - geminiStartTime;
+        console.log(`✅ [GEMINI] Response received in ${geminiDuration}ms`);
+        console.log("   Status:", geminiRes.status, geminiRes.statusText);
+
+        // Jika respons OK, keluar dari loop
+        if (geminiRes.ok) {
+          break;
+        }
+
+        // Jika 503 (Service Unavailable), coba lagi
+        if (geminiRes.status === 503) {
+          console.warn(`[GEMINI] Received 503 (Service Unavailable).`);
+          if (attempt < maxRetries) {
+            console.warn(`   Waiting ${retryDelay}ms before retrying...`);
+            await new Promise((resolve) => setTimeout(resolve, retryDelay));
+            continue; // Lanjut ke iterasi berikutnya
+          } else {
+            console.error(`[GEMINI] Max retries reached. Failing.`);
+          }
+        } else {
+          // Untuk status error lain (4xx, 500), jangan retry
+          console.warn(
+            `[GEMINI] Received non-retryable error ${geminiRes.status}.`
+          );
+          break; // Keluar loop, biarkan cek !geminiRes.ok menangani
+        }
+      } catch (fetchError) {
+        // Menangani error jaringan (cth: DNS lookup fail, connection refused)
+        console.error(
+          `❌ [GEMINI] Fetch error on attempt ${attempt}:`,
+          fetchError.message
+        );
+        // Buat objek respons palsu agar pemeriksaan !geminiRes.ok tetap berfungsi
+        geminiRes = {
+          ok: false,
+          status: 500, // Gunakan 500 sebagai status internal
+          statusText: fetchError.message,
+          text: async () => fetchError.message, // Tambahkan fungsi text
+        };
+        
+        if (attempt < maxRetries) {
+          console.warn(`   Waiting ${retryDelay}ms before retrying...`);
+          await new Promise((resolve) => setTimeout(resolve, retryDelay));
+        }
+      }
+    } // Akhir dari loop retry
+
+    // Cek di luar loop jika geminiRes masih belum OK setelah semua percobaan
     if (!geminiRes.ok) {
-      console.error("❌ [GEMINI] API returned error status");
-      const errorText = await geminiRes.text();
+      console.error("❌ [GEMINI] API call failed after all retries");
+      const errorText = await geminiRes.text().catch(() => "Could not read error text");
       console.error("   Error response:", errorText);
-      throw new Error(`Gemini API error: ${geminiRes.status}`);
+      throw new Error(`Gemini API error: ${geminiRes.status} ${geminiRes.statusText}`);
     }
 
-    const geminiData = await geminiRes.json();
-    console.log(
-      "📦 [GEMINI] Raw response:",
-      JSON.stringify(geminiData, null, 2)
-    );
-
+    const geminiData = await geminiRes.json();
+    console.log(
+      "📦 [GEMINI] Raw response:",
+      JSON.stringify(geminiData, null, 2)
+    );
     // ========== PARSE RESPONSE ==========
     console.log("\n🔍 [PARSE] Extracting text from Gemini response...");
     let rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
@@ -472,7 +525,7 @@ app.post("/chat", async (req, res) => {
         message_text: m.text,
       })),
     ];
-    
+
     console.log(
       "📝 [DATABASE] Inserting",
       transcriptsToInsert.length,
