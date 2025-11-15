@@ -588,6 +588,104 @@ function generateFallbackFeedback(stats) {
 // ROUTES
 // ============================================================================
 
+// GET /api/sessions/stats
+router.get("/stats", async (req, res) => {
+  try {
+    const user_id = req.user.user_id;
+    console.log(`📊 START: Fetching Stats for User ID: ${user_id}`);
+
+    // ... (Langkah 1 & 2: Pengambilan dan Pemfilteran Data - KODE SUDAH BENAR) ...
+    
+    const { data: evaluations, error: evalError } = await supabase
+      .from("session_evaluations")
+      .select(`
+          empathy_score,
+          question_score,
+          sessions (user_id) // Ambil user_id dari tabel sessions yang terhubung
+      `)
+      // Filter evaluasi hanya jika sesi terhubung dimiliki oleh user_id yang sekarang
+      .eq('sessions.user_id', user_id); 
+      
+  if (evalError) throw evalError;
+  console.log(`1. Supabase returned ${evaluations.length} evaluation records.`);
+
+  // Ganti variabel evaluatedSessions dan totalEvaluations
+  const evaluatedSessions = evaluations;
+  const totalEvaluations = evaluations.length; 
+
+  console.log(`2. Total Evaluations (Sesi dievaluasi): ${totalEvaluations}`);
+    
+    if (totalEvaluations > 0) {
+      console.log("   Data Evaluasi Mentah:");
+      evaluatedSessions.forEach((evalData, index) => {
+        console.log(`     #${index + 1}: Empathy=${evalData.empathy_score}, Question=${evalData.question_score}`);
+      });
+    }
+
+    if (totalEvaluations === 0) {
+        // ... (return 0)
+        return res.json({
+            success: true,
+            message: "Belum ada sesi yang dievaluasi",
+            data: {
+              total_evaluations: 0,
+              avg_empathy_score: 0,
+              avg_question_score: 0,
+            }
+          });
+    }
+
+     // 3. Hitung total skor (PERBAIKAN KRITIS DI SINI)
+     const sumScores = evaluatedSessions.reduce(
+        (acc, evalData) => {
+            // Ambil skor, pastikan konversi ke Number, dan jika null/undefined, gunakan 0
+            const empathy = Number(evalData.empathy_score ?? 0);
+            const question = Number(evalData.question_score ?? 0);
+
+            // Lakukan Penjumlahan
+            acc.totalEmpathy += empathy;
+            acc.totalQuestion += question;
+            
+            // Log Debugging (Hanya untuk konfirmasi, lihat output terminal)
+            console.log(`   - Adding: Empathy=${empathy}, Question=${question}. Current Sum: E=${acc.totalEmpathy}, Q=${acc.totalQuestion}`);
+
+            return acc;
+        },
+        { totalEmpathy: 0, totalQuestion: 0 }
+    );
+
+    // Hitung rata-rata
+    const avg_empathy_score = sumScores.totalEmpathy / totalEvaluations;
+    const avg_question_score = sumScores.totalQuestion / totalEvaluations;
+
+    const final_avg_empathy = parseFloat(avg_empathy_score.toFixed(1));
+    const final_avg_question = parseFloat(avg_question_score.toFixed(1));
+
+    console.log(`3. Final Total Sum: Empathy=${sumScores.totalEmpathy}, Question=${sumScores.totalQuestion}`);
+    console.log(`4. Calculated Average Empathy: ${final_avg_empathy}`);
+    console.log(`   Calculated Average Question: ${final_avg_question}`);
+    console.log(`======================================================\n`);
+
+    res.json({
+      success: true,
+      message: "Statistik rata-rata berhasil diambil",
+      data: {
+        total_evaluations: totalEvaluations,
+        avg_empathy_score: final_avg_empathy,
+        avg_question_score: final_avg_question,
+      },
+    });
+
+  } catch (error) {
+    // ... (Error handling)
+    console.error("Error fetching average stats:", error);
+    res.status(500).json({
+      success: false,
+      message: "Gagal mengambil data statistik: " + error.message,
+    });
+  }
+});
+
 // GET /api/sessions
 router.get("/", async (req, res) => {
   try {
