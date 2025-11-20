@@ -38,6 +38,7 @@ Jawablah setiap pertanyaan atau pernyataan psikolog secara alami.
    { "text": "...", "facialExpression": "...", "animation": "..." }
 3. facialExpression: ["smile","sad","angry","surprised","funnyFace","default"]
 4. animation: ["Talking_0","Talking_1","Talking_2","Crying","Laughing","Rumba","Idle","Terrified","Angry"]
+5. . *PANJANG JAWABAN MAKSIMAL 40 KATA.* (Ini Sangat Penting agar respon cepat).
 
 User: {{userMessage}}
 `;
