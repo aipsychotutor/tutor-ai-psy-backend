@@ -198,27 +198,41 @@ export function parseGeminiResponse(geminiData) {
   console.log("   ", rawText.substring(0, 300));
 
   rawText = rawText.replace(/```json|```/g, "").trim();
+  
   console.log("📄 [PARSE] Cleaned text:");
   console.log("   ", rawText.substring(0, 300));
 
-  let messages;
+  let messages =[];
   try {
-    console.log("🔄 [PARSE] Attempting to parse JSON...");
-    messages = JSON.parse(rawText);
-    console.log("✅ [PARSE] Successfully parsed JSON");
-    console.log("   Number of messages:", messages.length);
-    console.log("   Messages:", JSON.stringify(messages, null, 2));
+    const parsedData = JSON.parse(rawText);
+
+    // 🔥 CEK TIPE DATA: Apakah Array atau Object?
+    if (Array.isArray(parsedData)) {
+      // Jika Array, langsung pakai
+      messages = parsedData;
+    } else if (typeof parsedData === 'object' && parsedData !== null) {
+      // Jika Object, bungkus jadi Array [Object]
+      console.warn("⚠️ [PARSE] Gemini returned Single Object, wrapping in Array.");
+      messages = [parsedData];
+    } else {
+      // Jika bukan keduanya, anggap error
+      throw new Error("Format JSON tidak dikenali (Bukan Array/Object)");
+    }
+
+    console.log(`✅ [PARSE] JSON OK. ${messages.length} messages.`);
+    
   } catch (parseError) {
-    console.error("❌ [PARSE] JSON parse failed:", parseError.message);
-    console.error("   Failed text:", rawText);
+    console.error("❌ [PARSE] Failed:", parseError.message);
+    console.error("   Raw Text:", rawText.substring(0, 100) + "...");
+    
+    // Fallback agar server tidak crash
     messages = [
       {
-        text: "Maaf, terjadi kesalahan membaca respons AI.",
-        facialExpression: "default",
+        text: "Maaf, saya sedikit bingung.",
+        facialExpression: "sad",
         animation: "Idle",
       },
     ];
-    console.log("⚠️ [PARSE] Using fallback message");
   }
 
   return messages;
@@ -226,6 +240,11 @@ export function parseGeminiResponse(geminiData) {
 
 export function validateMessages(messages) {
   console.log("\n✔️ [VALIDATE] Validating expressions and animations...");
+  
+  if (!Array.isArray(messages)) {
+    console.error("❌ [VALIDATE] Input is not an array! Returning empty.");
+    return [];
+  }
   const validatedMessages = messages.map((m, idx) => validateMessage(m, idx));
   console.log("✅ [VALIDATE] All messages validated");
   return validatedMessages;
