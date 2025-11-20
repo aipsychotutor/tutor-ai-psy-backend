@@ -23,11 +23,6 @@ function getVoiceSettings(expression) {
   return settings[expression] || settings.default;
 }
 
-const audioFileToBase64 = async (file) => {
-  const data = await fs.readFile(file);
-  return data.toString("base64");
-};
-
 const readJsonTranscript = async (file) => {
   const data = await fs.readFile(file, "utf8");
   return JSON.parse(data);
@@ -35,30 +30,25 @@ const readJsonTranscript = async (file) => {
 
 // ========== SERVICE METHODS ==========
 export async function generateLipSync(messageIndex) {
-  const start = Date.now();
+  // 1. Convert MP3 to WAV (FFmpeg)
   await execCommand(
     `ffmpeg -y -i audios/message_${messageIndex}.mp3 audios/message_${messageIndex}.wav`
   );
-  console.log(
-    `🎵 Converted message_${messageIndex}.mp3 -> .wav (${Date.now() - start}ms)`
-  );
-
+  
+  // 2. Generate JSON (Rhubarb)
   await execCommand(
     `bin\\rhubarb.exe -f json -o audios/message_${messageIndex}.json audios/message_${messageIndex}.wav -r phonetic`
-  );
-  console.log(
-    `👄 Lip sync done for message_${messageIndex} (${Date.now() - start}ms)`
   );
 }
 
 export async function generateTTS(text, expression) {
   const settings = getVoiceSettings(expression);
-
+  
   const response = await axios.post(
     `https://api.elevenlabs.io/v1/text-to-speech/${voiceID}`,
     {
       text: text,
-      model_id: "eleven_multilingual_v2",
+      model_id: "eleven_turbo_v2_5", 
       voice_settings: {
         stability: settings.stability ?? 0.7,
         similarity_boost: settings.similarity_boost ?? 0.8,
@@ -71,71 +61,72 @@ export async function generateTTS(text, expression) {
         "xi-api-key": String(elevenLabsApiKey),
       },
       responseType: "arraybuffer",
+      timeout: 15000 // Timeout 15s
     }
   );
 
   return Buffer.from(response.data);
 }
 
+// 🔥 FUNGSI PROSES PER-ITEM (DENGAN DEBUG WAKTU)
+async function processSingleMessage(msg, i) {
+  const file = `audios/message_${i}.mp3`;
+  
+  // ⏱️ Start Timer Pesan Ini
+  const tStart = Date.now();
+  let tTTS = 0, tFile = 0, tLip = 0;
+
+  try {
+    // 1. Request TTS
+    const startTTS = Date.now();
+    const audioBuffer = await generateTTS(msg.text, msg.facialExpression);
+    tTTS = Date.now() - startTTS; // Catat durasi TTS
+    
+    // 2. Convert Base64 (In-Memory)
+    msg.audio = audioBuffer.toString("base64");
+
+    // 3. Save to Disk
+    const startFile = Date.now();
+    await fs.writeFile(file, audioBuffer);
+    tFile = Date.now() - startFile; // Catat durasi Save
+
+    // 4. Generate LipSync (CPU Bound)
+    const startLip = Date.now();
+    await generateLipSync(i);
+    tLip = Date.now() - startLip; // Catat durasi LipSync
+
+    // 5. Read Result
+    msg.lipsync = await readJsonTranscript(`audios/message_${i}.json`);
+
+    // 📊 PRINT LOG LAPORAN PER PESAN
+    const tTotal = Date.now() - tStart;
+    console.log(
+      `   ✅ [Msg ${i}] DONE in ${tTotal}ms ` +
+      `| 🔊 TTS: ${tTTS}ms | 💾 Save: ${tFile}ms | 👄 LipSync: ${tLip}ms`
+    );
+
+    return msg;
+
+  } catch (err) {
+    console.error(`   ❌ [Msg ${i}] FAILED: ${err.message}`);
+    msg.audio = null;
+    msg.lipsync = null;
+    return msg;
+  }
+}
+
+// 🔥 FUNGSI UTAMA (PARALLEL)
 export async function processMessagesAudio(messages) {
-  console.log(
-    "\n🎤 [TTS] Starting audio generation for",
-    messages.length,
-    "messages..."
+  console.log(`\n🎤 [TTS] Starting PARALLEL generation for ${messages.length} messages...`);
+  const startGlobal = Date.now();
+
+  // Jalankan semua secara bersamaan
+  await Promise.all(
+    messages.map((msg, index) => processSingleMessage(msg, index))
   );
 
-  for (let i = 0; i < messages.length; i++) {
-    console.log(`\n--- [TTS] Processing message ${i + 1}/${messages.length} ---`);
-    const msg = messages[i];
-    const file = `audios/message_${i}.mp3`;
-
-    console.log(`📝 [TTS-${i}] Text:`, msg.text);
-    console.log(`😊 [TTS-${i}] Expression:`, msg.facialExpression);
-
-    try {
-      console.log(`🔊 [TTS-${i}] Calling ElevenLabs API...`);
-      const ttsStartTime = Date.now();
-
-      const audioBuffer = await generateTTS(msg.text, msg.facialExpression);
-
-      const ttsDuration = Date.now() - ttsStartTime;
-      console.log(`✅ [TTS-${i}] Audio received in ${ttsDuration}ms`);
-      console.log(`   Audio size: ${audioBuffer.byteLength} bytes`);
-
-      console.log(`💾 [TTS-${i}] Saving audio to ${file}...`);
-      await fs.writeFile(file, audioBuffer);
-      console.log(`✅ [TTS-${i}] Audio saved successfully`);
-
-      console.log(`👄 [LIPSYNC-${i}] Generating lipsync data...`);
-      const lipsyncStartTime = Date.now();
-      await generateLipSync(i);
-      const lipsyncDuration = Date.now() - lipsyncStartTime;
-      console.log(
-        `✅ [LIPSYNC-${i}] Lipsync generated in ${lipsyncDuration}ms`
-      );
-
-      console.log(`🔐 [BASE64-${i}] Converting audio to base64...`);
-      msg.audio = await audioFileToBase64(file);
-      console.log(
-        `✅ [BASE64-${i}] Audio converted (length: ${msg.audio.length} chars)`
-      );
-
-      console.log(`📖 [LIPSYNC-${i}] Reading lipsync JSON...`);
-      msg.lipsync = await readJsonTranscript(`audios/message_${i}.json`);
-      console.log(`✅ [LIPSYNC-${i}] Lipsync data loaded`);
-
-      console.log(`✅ [TTS-${i}] Message processing complete!`);
-    } catch (err) {
-      console.error(`❌ [TTS-${i}] Error occurred:`, err.message);
-      console.error(`   Stack:`, err.stack);
-      console.error(`   Response data:`, err.response?.data);
-      console.error(`   Response status:`, err.response?.status);
-      msg.audio = null;
-      msg.lipsync = null;
-      console.log(`⚠️ [TTS-${i}] Continuing with null audio/lipsync`);
-    }
-  }
-
-  console.log("\n✅ [TTS] All audio processing complete!");
+  const totalDuration = Date.now() - startGlobal;
+  console.log(`✅ [TTS] All processed in ${totalDuration}ms`);
+  
   return messages;
 }

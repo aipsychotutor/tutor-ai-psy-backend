@@ -11,6 +11,7 @@ const personaMaya = {
   kepribadian: `- Kreatif dan detail-oriented.
 - Perfeksionis, sulit mendelegasikan tugas.
 - Emosional dan sangat terikat dengan hasil karya.`,
+  knowledge_base: [],
 };
 
 const promptTemplate = `
@@ -56,6 +57,7 @@ function fillTemplate(template, data) {
 
 function buildPersonaFromPatient(patient) {
   return {
+    patient_id: patient.patient_id,
     nama_pasien: patient.patient_name,
     biodata: `- Usia: ${patient.age || "Tidak diketahui"} tahun
 - Jenis Kelamin: ${patient.gender || "Tidak diketahui"}
@@ -66,6 +68,7 @@ function buildPersonaFromPatient(patient) {
     kepribadian: Array.isArray(patient.personality_traits)
       ? patient.personality_traits.map((t) => `- ${t}`).join("\n")
       : "- Tidak terdefinisi",
+      knowledge_base: patient.knowledge_base || []
   };
 }
 
@@ -87,7 +90,8 @@ export async function getPersonaForSession(session_id) {
         occupation,
         marital_status,
         background_story,
-        personality_traits
+        personality_traits,
+        knowledge_base
       )
     `
     )

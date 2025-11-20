@@ -1,4 +1,7 @@
-import { GEMINI_API_URL, geminiApiKey } from "../constant.js";
+import {geminiApiKey } from "../constant.js";
+
+const MODEL_FAST = "gemini-2.5-flash"; 
+const MODEL_STABLE = "gemini-2.5-pro";
 
 // ========== VALIDATION ==========
 const validExpressions = [
@@ -22,6 +25,23 @@ const validAnimations = [
   "Angry",
 ];
 
+// Fungsi pembantu untuk fetch ke Gemini biar kodingan utama rapi
+async function requestToGemini(prompt, modelName, signal = null) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiApiKey}`;
+  
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+    signal: signal // Untuk fitur timeout/abort
+  });
+
+  if (!response.ok) {
+    throw new Error(`API Error ${response.status}: ${response.statusText}`);
+  }
+
+  return await response.json();
+}
 // ========== HELPER FUNCTIONS ==========
 function validateMessage(message, idx) {
   const validatedExpression = validExpressions.includes(message.facialExpression)
@@ -50,6 +70,7 @@ function validateMessage(message, idx) {
 }
 
 // ========== SERVICE METHODS ==========
+/* Retry
 export async function callGeminiAPI(prompt) {
   const maxRetries = 3;
   const retryDelay = 2000;
@@ -124,6 +145,51 @@ export async function callGeminiAPI(prompt) {
 
   return await geminiRes.json();
 }
+*/
+
+// Switch Model
+export async function callGeminiAPI(prompt) {
+  let responseJson;
+  const startTime = Date.now();
+
+  try {
+    // 🏎️ USAHA 1: MODEL FLASH (Prioritas Kecepatan)
+    // Kita pasang TIMEOUT 8 Detik. Kalau Flash loading kelamaan (hang), kita anggap gagal.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000); 
+
+    console.log(`🤖 [GEMINI] Attempt 1: ${MODEL_FAST} (Speed Mode)`);
+    
+    responseJson = await requestToGemini(prompt, MODEL_FAST, controller.signal);
+    
+    clearTimeout(timeoutId); // Hapus timer kalau sukses
+    console.log(`✅ [GEMINI] Flash responded in ${Date.now() - startTime}ms`);
+
+  } catch (err) {
+    // 🛡️ FAILOVER: MODEL PRO (Prioritas Stabilitas)
+    // Jika Flash Error (503) ATAU Timeout (Hang), langsung masuk sini.
+    const timeWasted = Date.now() - startTime;
+    console.warn(`⚠️ [GEMINI] Flash Failed/Timeout (${timeWasted}ms). Reason: ${err.message}`);
+    console.log(`🛡️ [GEMINI] Instant Switch to: ${MODEL_STABLE}...`);
+
+    try {
+      // Langsung tembak PRO tanpa delay/retry!
+      responseJson = await requestToGemini(prompt, MODEL_STABLE);
+      console.log(`✅ [GEMINI] Pro rescued the chat!`);
+    } catch (errPro) {
+      console.error("❌ [GEMINI] Both models failed.");
+      throw new Error("Maaf, AI sedang sibuk. Coba lagi nanti.");
+    }
+  }
+
+  // --- 📊 DEBUG TOKEN USAGE ---
+  if (responseJson.usageMetadata) {
+    const { promptTokenCount, candidatesTokenCount } = responseJson.usageMetadata;
+    console.log(`💰 [TOKEN] In: ${promptTokenCount} | Out: ${candidatesTokenCount}`);
+  }
+
+  return responseJson;
+}
 
 export function parseGeminiResponse(geminiData) {
   console.log("\n🔍 [PARSE] Extracting text from Gemini response...");
@@ -163,4 +229,110 @@ export function validateMessages(messages) {
   const validatedMessages = messages.map((m, idx) => validateMessage(m, idx));
   console.log("✅ [VALIDATE] All messages validated");
   return validatedMessages;
+}
+
+// 1. Mengambil Vector (Angka) dari Teks
+export async function getEmbedding(text) {
+  // Truncate text for logging biar terminal gak penuh 
+  const shortText = text.length > 40 ? text.substring(0, 40) + "..." : text;
+  // console.log(`   🔌 [EMBEDDING] Requesting vector for: "${shortText}"`);
+
+  const EMBEDDING_URL = "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent";
+  
+  try {
+    const response = await fetch(`${EMBEDDING_URL}?key=${geminiApiKey}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "models/text-embedding-004",
+        content: {
+          parts: [{ text: text }]
+        }
+      })
+    });
+
+    if (!response.ok) throw new Error(`HTTP Error ${response.status}`);
+
+    const data = await response.json();
+    const vector = data.embedding.values;
+    
+    return vector;
+
+  } catch (error) {
+    console.error(`   ❌ [EMBEDDING] Failed for "${shortText}":`, error.message);
+    return null;
+  }
+}
+
+// 2. Menghitung Kemiripan (Cosine Similarity)
+function cosineSimilarity(vecA, vecB) {
+  if (!vecA || !vecB || vecA.length !== vecB.length) return 0;
+  
+  let dotProduct = 0;
+  let normA = 0;
+  let normB = 0;
+  
+  for (let i = 0; i < vecA.length; i++) {
+    dotProduct += vecA[i] * vecB[i];
+    normA += vecA[i] * vecA[i];
+    normB += vecB[i] * vecB[i];
+  }
+  
+  return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+}
+
+// 3. Fungsi UTAMA yang akan dipanggil dari luar
+// userQuery: Pertanyaan user (String)
+// contextList: Array of Strings ["Pasien sakit X", "Riwayat Y"] atau Objects
+export async function findRelevantContext(userQuery, contextList, topK = 3) {
+  console.log("\n" + "=".repeat(60));
+  console.log("🧠 [RAG START] Searching Knowledge Base");
+  console.log(`❓ User Query: "${userQuery}"`);
+  console.log(`📚 Total Candidates: ${contextList.length} items`);
+  console.log("-".repeat(60));
+
+  // a. Vectorkan pertanyaan user
+  console.log("⏳ [RAG] Vectorizing User Query...");
+  const queryVector = await getEmbedding(userQuery);
+  if (!queryVector) {
+    console.log("❌ [RAG] Failed to vectorize query. Returning empty context.");
+    return "";
+  }
+  // b. Hitung skor untuk setiap potongan data (Fakta)
+  // NOTE: Idealnya contextList sudah punya vector di database biar cepat.
+  // Tapi untuk sekarang kita generate on-the-fly.
+
+  console.log("⏳ [RAG] Comparing against Knowledge Base...");
+  const scoredContexts = await Promise.all(
+    contextList.map(async (item, index) => {
+      const textContent = typeof item === 'string' ? item : item.text || JSON.stringify(item);
+      
+      // Generate vector (Idealnya ini sudah di-cache di DB)
+      const itemVector = await getEmbedding(textContent);
+      
+      // Hitung skor
+      const score = cosineSimilarity(queryVector, itemVector);
+      
+      // DEBUG PER ITEM (Opsional: matikan jika terlalu berisik)
+      const shortContent = textContent.substring(0, 50).replace(/\n/g, " ");
+      console.log(`   🔹 [Item ${index}] Score: ${score.toFixed(4)} | "${shortContent}..."`);
+      
+      return { text: textContent, score: score };
+    })
+  );
+
+  // c. Urutkan dari skor tertinggi (Paling Mirip)
+  scoredContexts.sort((a, b) => b.score - a.score);
+
+  // d. Ambil top K (misal: 3 fakta teratas)
+  const topResults = scoredContexts.slice(0, topK);
+
+  console.log("-".repeat(60));
+  console.log(`🏆 [RAG WINNERS] Top ${topK} Most Relevant Contexts:`);
+  topResults.forEach((r, i) => {
+    console.log(`   ${i+1}. [Score: ${r.score.toFixed(4)}] "${r.text.substring(0, 100)}..."`);
+  });
+  console.log("=".repeat(60) + "\n");
+
+  return topResults.map(r => r.text).join("\n");
 }

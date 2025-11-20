@@ -1,7 +1,8 @@
 import express from "express";
 import axios from "axios";
 import { supabase } from "../supabase.js";
-import { GEMINI_API_URL, geminiApiKey } from "../constant.js";
+//import { GEMINI_API_URL, geminiApiKey } from "../constant.js";
+import { callGeminiAPI } from "../services/geminiService.js";
 
 const router = express.Router();
 
@@ -482,95 +483,38 @@ ANALISIS ANDA (HANYA JAWAB DALAM FORMAT JSON):
 `;
     }
   
-    console.log("🤖 Generating feedback with Gemini...");
+    const geminiData = await callGeminiAPI(feedbackPrompt);
 
-    // --- START: Perubahan Logika Retry ---
-    let geminiRes;
-    const maxRetries = 3;
-    let delay = 2000; // Jeda awal 2 detik
+    // --- PARSING RESPONSE ---
+    // Kita ambil text mentah dari struktur response Google
+    let rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
 
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        geminiRes = await axios.post(
-          `${GEMINI_API_URL}?key=${geminiApiKey}`,
-          {
-            contents: [
-              {
-                parts: [{ text: feedbackPrompt }],
-              },
-            ],
-            generationConfig: {
-              temperature: 0.7,
-              maxOutputTokens: 8192,
-            },
-          },
-          {
-            timeout: 30000,
-          }
-        );
+    // 1. Bersihkan markdown fences
+    rawText = rawText.replace(/```json|```/g, "").trim();
 
-        // Jika berhasil (status 200), keluar dari loop
-        if (geminiRes.status === 200 && geminiRes.data) {
-          console.log(`✓ Gemini call successful on attempt ${attempt}`);
-          break;
-        }
-      } catch (error) {
-        console.warn(`⚠️ Gemini attempt ${attempt} failed: ${error.message}`);
-        
-        // Cek jika error bisa di-retry (503 Service Unavailable atau 429 Too Many Requests)
-        if (error.response && (error.response.status === 503 || error.response.status === 429)) {
-          if (attempt === maxRetries) {
-            console.error("❌ Max retries reached for Gemini. Giving up.");
-            throw error; // Lempar error terakhir jika sudah max retries
-          }
-          console.log(`   Retrying in ${delay / 1000} seconds...`);
-          await new Promise(res => setTimeout(res, delay));
-          delay *= 2; // Double jeda (exponential backoff)
-        } else {
-          // Jika error lain (spt 400 Bad Request), langsung lempar error
-          console.error("❌ Non-retryable error from Gemini:", (error.response?.data || error.message));
-          throw error; 
-        }
-      }
-    }
+    // 2. Temukan blok JSON yang valid (dari { pertama hingga } terakhir)
+    const startIndex = rawText.indexOf('{');
+    const endIndex = rawText.lastIndexOf('}');
 
-    if (!geminiRes) {
-      throw new Error("Failed to get response from Gemini after all retries.");
-    }
-    // --- END: Perubahan Logika Retry ---
-
-
-    // [KODE BARU - LEBIH TANGGUH]
-   let rawText =
-     geminiRes.data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
-
-   // 1. Bersihkan dulu markdown fences
-   rawText = rawText.replace(/```json|```/g, "").trim();
-
-   // 2. Temukan blok JSON yang valid (dari { pertama hingga } terakhir)
-   const startIndex = rawText.indexOf('{');
-   const endIndex = rawText.lastIndexOf('}');
-
-   if (startIndex === -1 || endIndex === -1 || endIndex < startIndex) {
+    if (startIndex === -1 || endIndex === -1 || endIndex < startIndex) {
        console.error("❌ Gagal menemukan objek JSON yang valid di respons Gemini. Teks Mentah:", rawText);
        throw new Error("Struktur JSON tidak valid dari respons Gemini.");
-   }
+    }
 
-   // 3. Ekstrak hanya string JSON-nya
-   const jsonString = rawText.substring(startIndex, endIndex + 1);
+    // 3. Ekstrak string JSON
+    const jsonString = rawText.substring(startIndex, endIndex + 1);
 
-   // 4. Parse string yang sudah bersih
-   let feedback;
-   try {
-     feedback = JSON.parse(jsonString);
-   } catch (parseError) {
-     console.error("❌ Error parsing JSON yang sudah diekstrak:", parseError.message);
-     console.error("String JSON yang gagal di-parse:", jsonString);
-     // Jika masih gagal, lempar error asli dari catch luar
-     throw new Error(`JSON parse error after extraction: ${parseError.message}`);
-   }
+    // 4. Parse
+    let feedback;
+    try {
+      feedback = JSON.parse(jsonString);
+    } catch (parseError) {
+      console.error("❌ Error parsing JSON extracted:", parseError.message);
+      console.error("String JSON yang gagal di-parse:", jsonString);
+      throw new Error(`JSON parse error after extraction: ${parseError.message}`);
+    }
 
-    console.log("✓ Gemini feedback generated");
+    console.log("✓ Gemini feedback generated successfully");
 
     return {
       feedback_text: feedback.feedback_text,
