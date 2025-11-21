@@ -1,5 +1,8 @@
 import cors from "cors";
 import express from "express";
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from './swaggerConfig.js';
+
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -14,18 +17,26 @@ import chatRoutes from "./routes/chat.js";
 // Middleware
 import authMiddleware from "./middleware/authMiddleware.js";
 
-// Hapus import services/constants yang terkait chat, karena sudah dipindah ke chat.js
-
 // ========== CONFIG ==========
 const app = express();
 const port = 3000;
 app.use(express.json());
 app.use(
-  cors({
-    origin: "http://localhost:5173",
-    credentials: true,
-  })
+  cors({
+    origin: "http://localhost:5173",
+    credentials: true,
+  })
 );
+
+// Swagger API Documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.get('/api-docs.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
+});
+
+// Rute dasar
+app.use("/api/auth", authRoutes);
 
 // ========== ROUTE REGISTER ==========
 // Rute yang membutuhkan autentikasi level user/admin
@@ -34,10 +45,7 @@ app.use("/api/sessions", authMiddleware(["user", "admin"]), sessionsRoutes);
 app.use("/api/reports", authMiddleware(["user", "admin"]), reportsRoutes);
 app.use("/api/chat", chatRoutes); 
 
-// Rute dasar
-app.use("/api/auth", authRoutes);
-
 // ========== RUN ==========
 app.listen(port, () => {
-  console.log(`🚀 Server running on port ${port}`);
+  console.log(`🚀 Server running on port ${port}`);
 });

@@ -9,7 +9,41 @@ import { analyzeSession, PYTHON_API_URL } from "../services/analysisService.js";
 
 const router = express.Router();
 
-// 📋 GET /api/reports/:session_id/transcripts
+/**
+ * @swagger
+ * tags:
+ *   - name: Reports & Analysis
+ *     description: Endpoint untuk Transkrip, Evaluasi, dan Analisis Sesi.
+ */
+
+/**
+ * @swagger
+ * /reports/transcripts/{session_id}:
+ *   get:
+ *     summary: Mengambil Transkrip Percakapan Sesi
+ *     tags: [Reports & Analysis]
+ *     parameters:
+ *       - in: path
+ *         name: session_id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *         description: ID unik sesi.
+ *     responses:
+ *       200:
+ *         description: Data transkrip berhasil diambil.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/SessionTranscript'
+ *       401:
+ *         description: Unauthorized (Token tidak valid).
+ *       404:
+ *         description: Sesi tidak ditemukan atau akses ditolak.
+ */
 router.get("/transcripts/:session_id", async (req, res) => {
   try {
     const { session_id } = req.params;
@@ -29,7 +63,28 @@ router.get("/transcripts/:session_id", async (req, res) => {
   }
 });
 
-// 📝 GET /api/reports/:session_id/evaluation
+/**
+ * @swagger
+ * /reports/evaluation/{session_id}:
+ *   get:
+ *     summary: Mengambil Hasil Evaluasi AI Sesi
+ *     tags: [Reports & Analysis]
+ *     parameters:
+ *       - in: path
+ *         name: session_id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *         description: ID unik sesi.
+ *     responses:
+ *       200:
+ *         description: Hasil evaluasi berhasil diambil. Mengandung evaluated false jika belum dianalisis.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SessionEvaluationResponse'
+ */
 router.get("/evaluation/:session_id", async (req, res) => {
   try {
     const { session_id } = req.params;
@@ -60,7 +115,33 @@ router.get("/evaluation/:session_id", async (req, res) => {
   }
 });
 
-// 💾 POST /api/reports/:session_id/evaluation
+/**
+ * @swagger
+ * /reports/evaluation/{session_id}:
+ *   post:
+ *     summary: Menyimpan/Memperbarui Evaluasi Manual Sesi
+ *     description: Digunakan untuk menyimpan atau memperbarui skor dan feedback evaluasi sesi secara manual.
+ *     tags: [Reports & Analysis]
+ *     parameters:
+ *       - in: path
+ *         name: session_id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *         description: ID unik sesi.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/EvaluationInput'
+ *     responses:
+ *       200:
+ *         description: Evaluasi berhasil disimpan.
+ *       400:
+ *         description: Validasi input gagal (skor di luar range 0-100).
+ */
 router.post("/evaluation/:session_id", async (req, res) => {
   try {
     const { session_id } = req.params;
@@ -104,7 +185,28 @@ router.post("/evaluation/:session_id", async (req, res) => {
   }
 });
 
-// 📊 GET /api/reports/patient/:patient_id
+/**
+ * @swagger
+ * /reports/patient/{patient_id}:
+ *   get:
+ *     summary: Laporan Agregat Pasien (Rata-rata Skor Semua Sesi)
+ *     tags: [Reports & Analysis]
+ *     parameters:
+ *       - in: path
+ *         name: patient_id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *         description: ID unik pasien.
+ *     responses:
+ *       200:
+ *         description: Laporan pasien berhasil diambil.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PatientReport'
+ */
 router.get("/patient/:patient_id", async (req, res) => {
   try {
     const { patient_id } = req.params;
@@ -171,7 +273,21 @@ router.get("/patient/:patient_id", async (req, res) => {
   }
 });
 
-// 📊 GET /api/sessions/user/:user_id/statistics
+/**
+ * @swagger
+ * /reports/user/me/statistics:
+ *   get:
+ *     summary: Statistik Global Pengguna (Semua Sesi)
+ *     description: Mengambil ringkasan total sesi, durasi, dan rata-rata skor untuk semua sesi yang dievaluasi oleh pengguna yang sedang login.
+ *     tags: [Reports & Analysis]
+ *     responses:
+ *       200:
+ *         description: Statistik berhasil diambil.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UserStatistics'
+ */
 router.get("/user/me/statistics", async (req, res) => {
   try {
     const user_id = req.user.user_id;
@@ -233,7 +349,21 @@ router.get("/user/me/statistics", async (req, res) => {
   }
 });
 
-// GET /api/sessions/stats
+/**
+ * @swagger
+ * /reports/stats:
+ *   get:
+ *     summary: Statistik Rata-rata Evaluasi
+ *     description: Mengambil rata-rata skor Empati dan Pertanyaan dari semua sesi yang dievaluasi oleh pengguna.
+ *     tags: [Reports & Analysis]
+ *     responses:
+ *       200:
+ *         description: Statistik rata-rata skor berhasil diambil.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AverageStats'
+ */
 router.get("/stats", async (req, res) => {
   try {
     const user_id = req.user.user_id;
@@ -316,31 +446,68 @@ router.get("/stats", async (req, res) => {
   }
 });
 
-router.get("/:session_id/transcripts", async (req, res) => {
-  try {
-    const { session_id } = req.params;
-    const user_id = req.user.user_id;
+/**
+ * @swagger
+ * /reports/{session_id}/transcripts:
+ *   get:
+ *     summary: Mengambil Transkrip (Deprecated - Gunakan /reports/transcripts)
+ *     tags: [Reports & Analysis]
+ *     deprecated: true
+ *     parameters:
+ *       - in: path
+ *         name: session_id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *         description: ID unik sesi.
+ *     responses:
+ *       200:
+ *         description: Data transkrip berhasil diambil.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/SessionTranscript'
+ *       404:
+ *         description: Sesi tidak ditemukan atau akses ditolak.
+ */
+// Route implementation removed since it's deprecated
 
-    await SessionModel.checkSessionAccess(session_id, user_id);
 
-    const data = await SessionTranscriptModel.getTranscriptsBySessionId(session_id);
-
-    res.json({
-      success: true,
-      data,
-    });
-  } catch (error) {
-    console.error("Error fetching transcripts:", error);
-    if (error.message.includes("Sesi tidak ditemukan")) {
-        return res.status(404).json({ message: error.message });
-    }
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-});
-
+/**
+ * @swagger
+ * /reports/{session_id}/analyze:
+ *   post:
+ *     summary: Memicu Analisis dan Evaluasi AI Sesi Konseling
+ *     description: Menganalisis transkrip sesi yang sudah completed menggunakan Model ML (klasifikasi) dan Gemini (feedback naratif), lalu menyimpan hasilnya.
+ *     tags: [Reports & Analysis]
+ *     parameters:
+ *       - in: path
+ *         name: session_id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *         description: ID unik sesi yang akan dianalisis.
+ *     responses:
+ *       200:
+ *         description: Analisis berhasil diselesaikan dan evaluasi disimpan.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AnalyzeResponse'
+ *       400:
+ *         description: Sesi belum selesai atau sudah dievaluasi.
+ *       500:
+ *         description: Server atau salah satu model AI gagal merespons.
+ */
 router.post("/:session_id/analyze", async (req, res) => {
   try {
     const { session_id } = req.params;

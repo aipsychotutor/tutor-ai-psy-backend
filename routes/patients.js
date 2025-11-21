@@ -4,6 +4,208 @@ import PatientModel from "../models/patientModel.js";
 
 const router = express.Router();
 
+/**
+ * @swagger
+ * tags:
+ *   - name: Patients
+ *     description: Endpoint untuk manajemen data pasien dan avatar
+ */
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     Patient:
+ *       type: object
+ *       properties:
+ *         patient_id:
+ *           type: string
+ *           format: uuid
+ *           description: ID unik pasien
+ *         user_id:
+ *           type: string
+ *           format: uuid
+ *           description: ID user yang membuat pasien
+ *         patient_name:
+ *           type: string
+ *           description: Nama pasien
+ *           example: John Doe
+ *         background_story:
+ *           type: string
+ *           description: Latar belakang dan riwayat pasien
+ *           example: Pasien mengalami kecemasan sosial sejak masa remaja
+ *         personality_type:
+ *           type: string
+ *           nullable: true
+ *           description: Tipe kepribadian pasien
+ *           example: Introvert
+ *         symptom_intensity:
+ *           type: integer
+ *           nullable: true
+ *           minimum: 1
+ *           maximum: 10
+ *           description: Tingkat intensitas gejala (1-10)
+ *           example: 7
+ *         age:
+ *           type: integer
+ *           nullable: true
+ *           description: Usia pasien
+ *           example: 25
+ *         gender:
+ *           type: string
+ *           nullable: true
+ *           description: Jenis kelamin pasien
+ *           example: Male
+ *         occupation:
+ *           type: string
+ *           nullable: true
+ *           description: Pekerjaan pasien
+ *           example: Software Engineer
+ *         marital_status:
+ *           type: string
+ *           nullable: true
+ *           description: Status pernikahan pasien
+ *           example: Single
+ *         personality_traits:
+ *           type: object
+ *           nullable: true
+ *           description: Trait kepribadian dalam format JSON
+ *           example: { "openness": 8, "conscientiousness": 7 }
+ *         avatar_path:
+ *           type: string
+ *           description: Path file avatar 3D model
+ *           example: /models/default.glb
+ *         profile_image:
+ *           type: string
+ *           nullable: true
+ *           description: URL gambar profil pasien
+ *         is_active:
+ *           type: boolean
+ *           description: Status aktif pasien
+ *           example: true
+ *         is_global:
+ *           type: boolean
+ *           description: Apakah pasien dapat diakses oleh semua user
+ *           example: false
+ *         knowledge_base:
+ *           type: array
+ *           nullable: true
+ *           description: Data embedding untuk RAG
+ *           items:
+ *             type: object
+ *             properties:
+ *               text:
+ *                 type: string
+ *               vector:
+ *                 type: array
+ *                 items:
+ *                   type: number
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *           description: Waktu pembuatan data
+ *         updated_at:
+ *           type: string
+ *           format: date-time
+ *           description: Waktu update terakhir
+ *     
+ *     PatientInput:
+ *       type: object
+ *       required:
+ *         - patient_name
+ *         - background_story
+ *       properties:
+ *         patient_name:
+ *           type: string
+ *           description: Nama pasien
+ *           example: John Doe
+ *         background_story:
+ *           type: string
+ *           description: Latar belakang dan riwayat pasien
+ *           example: Pasien mengalami kecemasan sosial sejak masa remaja
+ *         personality_type:
+ *           type: string
+ *           nullable: true
+ *           description: Tipe kepribadian pasien
+ *           example: Introvert
+ *         symptom_intensity:
+ *           type: integer
+ *           nullable: true
+ *           minimum: 1
+ *           maximum: 10
+ *           description: Tingkat intensitas gejala (1-10)
+ *           example: 7
+ *         age:
+ *           type: integer
+ *           nullable: true
+ *           minimum: 0
+ *           description: Usia pasien
+ *           example: 25
+ *         gender:
+ *           type: string
+ *           nullable: true
+ *           description: Jenis kelamin pasien
+ *           example: Male
+ *         occupation:
+ *           type: string
+ *           nullable: true
+ *           description: Pekerjaan pasien
+ *           example: Software Engineer
+ *         marital_status:
+ *           type: string
+ *           nullable: true
+ *           description: Status pernikahan pasien
+ *           example: Single
+ *         personality_traits:
+ *           type: object
+ *           nullable: true
+ *           description: Trait kepribadian dalam format JSON
+ *           example: { "openness": 8, "conscientiousness": 7 }
+ *         is_global:
+ *           type: boolean
+ *           description: Apakah pasien dapat diakses oleh semua user
+ *           example: false
+ *     
+ *     PatientListItem:
+ *       type: object
+ *       properties:
+ *         patient_id:
+ *           type: string
+ *           format: uuid
+ *         patient_name:
+ *           type: string
+ *         avatar_path:
+ *           type: string
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *         is_active:
+ *           type: boolean
+ *         is_global:
+ *           type: boolean
+ *         user_id:
+ *           type: string
+ *           format: uuid
+ *     
+ *     AvatarResponse:
+ *       type: object
+ *       properties:
+ *         avatar_path:
+ *           type: string
+ *           description: Path ke file avatar 3D model
+ *           example: /models/default.glb
+ *     
+ *     MigrationResponse:
+ *       type: object
+ *       properties:
+ *         status:
+ *           type: string
+ *           example: success
+ *         message:
+ *           type: string
+ *           example: Berhasil migrasi 5 dari 5 pasien.
+ */
+
 // ==========================================
 // HELPER: GENERATE EMBEDDINGS
 // ==========================================
@@ -53,7 +255,31 @@ async function generatePatientEmbeddings(patientData) {
 // ==========================================
 // ROUTES
 // ==========================================
-// POST /api/patients/migrate-embeddings
+/**
+ * @swagger
+ * /patients/migrate-embeddings:
+ *   post:
+ *     summary: Migrasi Embeddings untuk Pasien yang Sudah Ada
+ *     description: Membuat ulang knowledge base (embeddings) untuk semua pasien yang belum memiliki data embedding. Berguna untuk migrasi data lama ke sistem RAG.
+ *     tags: [Patients]
+ *     responses:
+ *       200:
+ *         description: Migrasi berhasil diselesaikan
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/MigrationResponse'
+ *       500:
+ *         description: Error saat melakukan migrasi
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Failed to generate embeddings
+ */
 router.post("/migrate-embeddings", async (req, res) => {
   try {
     console.log("🚀 [MIGRATE] Starting migration for existing patients...");
@@ -84,7 +310,57 @@ router.post("/migrate-embeddings", async (req, res) => {
   }
 });
 
-// GET /api/patients/:id
+/**
+ * @swagger
+ * /patients/{id}:
+ *   get:
+ *     summary: Mengambil Detail Pasien Berdasarkan ID
+ *     description: Mendapatkan informasi lengkap pasien termasuk background, biodata, dan knowledge base. User hanya bisa akses pasien miliknya sendiri atau pasien global, kecuali admin.
+ *     tags: [Patients]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *         description: ID unik pasien
+ *     responses:
+ *       200:
+ *         description: Data pasien berhasil diambil
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Patient'
+ *       401:
+ *         description: User tidak terautentikasi
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: error
+ *                 message:
+ *                   type: string
+ *                   example: User not authenticated
+ *       404:
+ *         description: Pasien tidak ditemukan atau tidak memiliki akses
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: error
+ *                 message:
+ *                   type: string
+ *                   example: Pasien tidak ditemukan atau Anda tidak punya akses
+ *       500:
+ *         description: Error server internal
+ */
 router.get("/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -118,7 +394,36 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// GET /api/patients - Get all patients
+/**
+ * @swagger
+ * /patients:
+ *   get:
+ *     summary: Mengambil Daftar Semua Pasien
+ *     description: Mendapatkan daftar pasien yang dapat diakses oleh user. User biasa hanya melihat pasien miliknya dan pasien global. Admin dapat melihat semua pasien.
+ *     tags: [Patients]
+ *     responses:
+ *       200:
+ *         description: Daftar pasien berhasil diambil
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/PatientListItem'
+ *       500:
+ *         description: Error server internal
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: error
+ *                 message:
+ *                   type: string
+ *                   example: Database connection failed
+ */
 router.get("/", async (req, res) => {
   const userRole = req.user.role;
   const user_id = req.user.user_id;
@@ -134,7 +439,62 @@ router.get("/", async (req, res) => {
   }
 });
 
-// POST /api/patients (CREATE NEW PATIENT)
+/**
+ * @swagger
+ * /patients:
+ *   post:
+ *     summary: Membuat Pasien Baru
+ *     description: Mendaftarkan pasien baru dengan informasi lengkap. Sistem akan otomatis membuat knowledge base (embeddings) menggunakan Google Generative AI untuk mendukung fitur RAG.
+ *     tags: [Patients]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/PatientInput'
+ *     responses:
+ *       201:
+ *         description: Pasien berhasil dibuat
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 message:
+ *                   type: string
+ *                   example: Pasien berhasil ditambahkan
+ *                 data:
+ *                   $ref: '#/components/schemas/Patient'
+ *       400:
+ *         description: Validasi input gagal
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: error
+ *                 message:
+ *                   type: string
+ *                   example: patient_name dan background_story harus diisi
+ *       500:
+ *         description: Error server internal
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: error
+ *                 message:
+ *                   type: string
+ *                   example: Failed to create patient
+ */
 router.post("/", async (req, res) => {
   try {
     const user_id = req.user.user_id;
@@ -210,7 +570,49 @@ router.post("/", async (req, res) => {
   }
 });
 
-// GET /api/patients/model/:patientId - Get patient avatar model path
+/**
+ * @swagger
+ * /patients/model/{patientId}:
+ *   get:
+ *     summary: Mengambil Path Avatar 3D Pasien
+ *     description: Mendapatkan lokasi file 3D model avatar pasien. Jika tidak ada avatar khusus, akan mengembalikan path default.
+ *     tags: [Patients]
+ *     parameters:
+ *       - in: path
+ *         name: patientId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *         description: ID unik pasien
+ *     responses:
+ *       200:
+ *         description: Path avatar berhasil diambil
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AvatarResponse'
+ *       404:
+ *         description: Pasien tidak ditemukan atau tidak memiliki akses
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Pasien tidak ditemukan atau Anda tidak punya akses
+ *       500:
+ *         description: Error server internal
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Database query failed
+ */
 router.get("/model/:patientId", async (req, res) => {
   try {
     const { patientId } = req.params;
