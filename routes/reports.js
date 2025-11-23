@@ -519,8 +519,7 @@ router.post("/:session_id/analyze", async (req, res) => {
 
     const analysisResult = await analyzeSession(session_id, user_id);
 
-    const evaluation = analysisResult.evaluation;
-    const modelAnalysis = analysisResult.modelAnalysis;
+    const { evaluation, modelAnalysis, prosodyAnalysis } = analysisResult;
 
     console.log("\n✅ Analysis completed successfully!");
     console.log("=".repeat(70) + "\n");
@@ -534,6 +533,7 @@ router.post("/:session_id/analyze", async (req, res) => {
         model_statistics: modelAnalysis.statistics,
         patterns: modelAnalysis.statistics.patterns,
         total_counselor_messages: modelAnalysis.total_messages,
+        prosody_analysis: prosodyAnalysis,
         python_api_used: PYTHON_API_URL,
       },
     });
