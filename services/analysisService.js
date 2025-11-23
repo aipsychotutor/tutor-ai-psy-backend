@@ -157,7 +157,7 @@ function analyzeProsodyRules(aggregateData) {
   if (avg_speaking_rate > 5.5) {
     speedStatus = "Tergesa-gesa";
     labels.push("Bicara Cepat");
-    insights.push("Kecepatan bicara tinggi, berpotensi membuat klien merasa diburu-buru.");
+    insights.push("Kecepatan bicara tinggi, berpotensi membuat pasien merasa diburu-buru.");
   } else if (avg_speaking_rate < 2.5) {
     speedStatus = "Sangat Lambat";
     labels.push("Bicara Lambat");
@@ -216,7 +216,6 @@ Anda adalah supervisor psikologi senior. Tugas Anda adalah memberikan feedback n
 DATA PERFORMA TEKS (DARI AI):
 - Skor Pertanyaan: ${stats.question_score}/100
 - Skor Empati: ${stats.empathy_score}/100
-- Dominasi Pertanyaan: ${stats.patterns.find(p => p.type === 'most_common')?.pattern || 'N/A'}
 
 TRANSKRIP SINGKAT:
 ${conversationText.slice(0, 1500)}... (dipotong agar efisien)
@@ -239,7 +238,7 @@ Sistem kami telah menganalisis audio konselor dan menemukan fakta berikut (JANGA
 INSTRUKSI KHUSUS:
 Berikan feedback yang menggabungkan analisis teks dan vokal.
 - Jika Intonasi "Datar" tapi Teks "Empatik": Kritik bahwa empati verbalnya mungkin tidak tersampaikan dengan tulus karena nada suara yang monoton.
-- Jika Kecepatan "Tergesa-gesa": Ingatkan untuk memperlambat tempo agar klien nyaman.
+- Jika Kecepatan "Tergesa-gesa": Ingatkan untuk memperlambat tempo agar pasien nyaman.
 - Jika "Banyak Jeda": Tanyakan apakah konselor merasa gugup.
 - Jangan menebak-nebak angka, gunakan kesimpulan di atas.
 
@@ -327,10 +326,6 @@ function calculateModelStatistics(results, totalMessages, totalQuestions, totalS
   const empathyScore = calculateEmpathyScore(empathyCounts, totalMessages);
   const overallScore = Math.round(questionScore * 0.4 + empathyScore * 0.6);
 
-  // Detect patterns simple
-  const patterns = [];
-  if(results.length > 0) patterns.push({type: 'most_common', pattern: 'Varied'}); // Simplified for brevity
-
   return {
     question_distribution: questionCounts,
     question_percentages: questionPercentages,
@@ -339,7 +334,6 @@ function calculateModelStatistics(results, totalMessages, totalQuestions, totalS
     question_score: Math.round(questionScore),
     empathy_score: Math.round(empathyScore),
     overall_score: overallScore,
-    patterns: patterns,
   };
 }
 

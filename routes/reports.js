@@ -531,7 +531,6 @@ router.post("/:session_id/analyze", async (req, res) => {
       classification_results: modelAnalysis.results,
       detailed_analysis: {
         model_statistics: modelAnalysis.statistics,
-        patterns: modelAnalysis.statistics.patterns,
         total_counselor_messages: modelAnalysis.total_messages,
         prosody_analysis: prosodyAnalysis,
         python_api_used: PYTHON_API_URL,
