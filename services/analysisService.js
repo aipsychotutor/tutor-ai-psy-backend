@@ -225,7 +225,7 @@ ${conversationText.slice(0, 1500)}... (dipotong agar efisien)
   if(prosodyAnalysis.has_data){
      console.log("🎙️ Generating feedback WITH Rule-Based Prosody insights...");
      
-     feedbackPrompt = `
+       feedbackPrompt = `
 ${commonPromptHeader}
 
 DATA ANALISIS VOKAL/SUARA (HASIL RULE-BASED SYSTEM):
@@ -241,6 +241,7 @@ Berikan feedback yang menggabungkan analisis teks dan vokal.
 - Jika Kecepatan "Tergesa-gesa": Ingatkan untuk memperlambat tempo agar pasien nyaman.
 - Jika "Banyak Jeda": Tanyakan apakah konselor merasa gugup.
 - Jangan menebak-nebak angka, gunakan kesimpulan di atas.
+- JIKA ADA REFERENSI RAG DI ATAS, sesuaikan saran Anda dengannya.
 
 OUTPUT (JSON):
 {
@@ -249,12 +250,16 @@ OUTPUT (JSON):
   "improvements": ["<Poin perbaikan teks>", "<Poin perbaikan vokal (misal: Kurangi kecepatan bicara)>"]
 }
 `;
-  } else {
-    // Fallback tanpa audio
-    console.log("📝 Generating feedback WITHOUT vocal analysis...");
-      feedbackPrompt = `
+    } else {
+      // Fallback tanpa audio
+      console.log("📝 Generating feedback WITHOUT vocal analysis...");
+        feedbackPrompt = `
 ${commonPromptHeader}
 (Tidak ada data audio/vokal).
+
+INSTRUKSI KHUSUS:
+- Berikan feedback fokus pada teknik konseling dan penyusunan kalimat berdasarkan transkrip.
+- JIKA ADA REFERENSI RAG DI ATAS, sesuaikan saran Anda dengannya.
 
 OUTPUT (JSON):
 {
