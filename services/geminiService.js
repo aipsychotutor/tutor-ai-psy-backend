@@ -154,36 +154,45 @@ export async function callGeminiAPI(prompt) {
 
   try {
     // 🏎️ USAHA 1: MODEL FLASH (Prioritas Kecepatan)
-    // Kita pasang TIMEOUT 8 Detik. Kalau Flash loading kelamaan (hang), kita anggap gagal.
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000); 
+    const timeoutId = setTimeout(() => controller.abort(), 15000); 
 
     console.log(`🤖 [GEMINI] Attempt 1: ${MODEL_FAST} (Speed Mode)`);
     
     responseJson = await requestToGemini(prompt, MODEL_FAST, controller.signal);
     
-    clearTimeout(timeoutId); // Hapus timer kalau sukses
+    clearTimeout(timeoutId); 
     console.log(`✅ [GEMINI] Flash responded in ${Date.now() - startTime}ms`);
 
   } catch (err) {
     // 🛡️ FAILOVER: MODEL PRO (Prioritas Stabilitas)
-    // Jika Flash Error (503) ATAU Timeout (Hang), langsung masuk sini.
     const timeWasted = Date.now() - startTime;
-    console.warn(`⚠️ [GEMINI] Flash Failed/Timeout (${timeWasted}ms). Reason: ${err.message}`);
+    console.warn(`⚠️ [GEMINI] Flash Failed/Timeout (${timeWasted}ms).`);
+    console.warn(`   Reason 1: ${err.message}`); // <--- Log alasan Flash gagal
     console.log(`🛡️ [GEMINI] Instant Switch to: ${MODEL_STABLE}...`);
 
     try {
-      // Langsung tembak PRO tanpa delay/retry!
       responseJson = await requestToGemini(prompt, MODEL_STABLE);
       console.log(`✅ [GEMINI] Pro rescued the chat!`);
+      
     } catch (errPro) {
-      console.error("❌ [GEMINI] Both models failed.");
-      throw new Error("Maaf, AI sedang sibuk. Coba lagi nanti.");
+      // ❌ JIKA KEDUANYA GAGAL
+      console.error("\n🔥 [GEMINI] CRITICAL FAILURE: Both models failed.");
+      
+      // 1. Log Error Flash 
+      console.error(`   📉 Error 1 (Flash): ${err.message}`);
+      
+      // 2. Log Error Pro 
+      console.error(`   📉 Error 2 (Pro)  : ${errPro.message}`);
+      
+      if(errPro.cause) console.error("   🔎 Cause:", errPro.cause);
+
+      throw new Error(`AI Overload. Flash: [${err.message}] || Pro: [${errPro.message}]`);
     }
   }
 
   // --- 📊 DEBUG TOKEN USAGE ---
-  if (responseJson.usageMetadata) {
+  if (responseJson && responseJson.usageMetadata) {
     const { promptTokenCount, candidatesTokenCount } = responseJson.usageMetadata;
     console.log(`💰 [TOKEN] In: ${promptTokenCount} | Out: ${candidatesTokenCount}`);
   }
