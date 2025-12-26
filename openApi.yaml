@@ -65,7 +65,7 @@ components:
         email:
           type: string
           format: email
-          example: "john@example.com"
+          example: "john@gmail.com"
         role:
           type: string
           enum: [user, admin]
@@ -350,7 +350,7 @@ paths:
                 email:
                   type: string
                   format: email
-                  example: john@example.com
+                  example: john@gmail.com
                   description: Email unik untuk user
                 password:
                   type: string
@@ -366,7 +366,7 @@ paths:
                 summary: Request valid
                 value:
                   username: johndoe
-                  email: john@example.com
+                  email: john@gmail.com
                   password: Password123
       responses:
         "200":
@@ -383,7 +383,7 @@ paths:
                     user:
                       user_id: 1
                       username: johndoe
-                      email: john@example.com
+                      email: john@gmail.com
                       role: user
                       is_admin: false
                       created_at: "2024-12-27T10:00:00.000Z"
@@ -432,7 +432,7 @@ paths:
                 email:
                   type: string
                   format: email
-                  example: john@example.com
+                  example: john@gmail.com
                 password:
                   type: string
                   example: Password123
@@ -440,7 +440,7 @@ paths:
               valid:
                 summary: Login valid
                 value:
-                  email: john@example.com
+                  email: john@gmail.com
                   password: Password123
       responses:
         "200":
@@ -457,7 +457,7 @@ paths:
                     user:
                       user_id: 1
                       username: johndoe
-                      email: john@example.com
+                      email: john@gmail.com
                       role: user
                       is_admin: false
                       created_at: "2024-12-27T10:00:00.000Z"
@@ -469,7 +469,7 @@ paths:
                     user:
                       user_id: 2
                       username: admin
-                      email: admin@example.com
+                      email: admin@gmail.com
                       role: admin
                       is_admin: true
                       created_at: "2024-12-27T09:00:00.000Z"
@@ -491,6 +491,145 @@ paths:
                   value:
                     status: error
                     message: Email atau password salah.
+
+  /auth/update-password:
+    put:
+      tags: [Auth]
+      summary: Update password user
+      description: >
+        Mengubah password user yang sedang login. User harus memasukkan
+        password lama untuk verifikasi, kemudian memasukkan password baru.
+        Password baru harus memenuhi kriteria: minimal 8 karakter, 
+        mengandung huruf besar, huruf kecil, dan angka.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [oldPassword, newPassword]
+              properties:
+                oldPassword:
+                  type: string
+                  description: Password lama untuk verifikasi
+                  example: "OldPassword123"
+                newPassword:
+                  type: string
+                  minLength: 8
+                  description: >
+                    Password baru, minimal 8 karakter dengan:
+                    - Minimal 1 huruf besar (A-Z)
+                    - Minimal 1 huruf kecil (a-z)
+                    - Minimal 1 angka (0-9)
+                  example: "NewPassword456"
+            examples:
+              valid:
+                summary: Request valid
+                value:
+                  oldPassword: "OldPassword123"
+                  newPassword: "NewPassword456"
+      responses:
+        "200":
+          description: Password berhasil diperbarui
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+                  message:
+                    type: string
+                    example: "Password berhasil diperbarui"
+              examples:
+                success:
+                  summary: Update berhasil
+                  value:
+                    status: "ok"
+                    message: "Password berhasil diperbarui"
+        "400":
+          description: Update gagal
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+              examples:
+                missing_fields:
+                  summary: Field tidak lengkap
+                  value:
+                    status: "error"
+                    message: "Password lama dan baru harus diisi"
+                wrong_old_password:
+                  summary: Password lama salah
+                  value:
+                    status: "error"
+                    message: "Password lama salah"
+                weak_new_password:
+                  summary: Password baru tidak memenuhi syarat
+                  value:
+                    status: "error"
+                    message: "Password baru minimal 8 karakter, ada huruf besar, kecil, dan angka"
+                user_not_found:
+                  summary: User tidak ditemukan
+                  value:
+                    status: "error"
+                    message: "User tidak ditemukan"
+
+  /auth/delete-account:
+    delete:
+      tags: [Auth]
+      summary: Hapus akun user
+      description: >
+        Menghapus akun user yang sedang login beserta seluruh data 
+        yang terkait (pasien, sesi, transkrip, evaluasi, dll).
+        Operasi ini bersifat permanen dan tidak dapat dibatalkan.
+        User harus sudah terautentikasi untuk menggunakan endpoint ini.
+      responses:
+        "200":
+          description: Akun berhasil dihapus
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+                  message:
+                    type: string
+                    example: "Akun dan seluruh data riwayat Anda telah dihapus secara permanen."
+              examples:
+                success:
+                  summary: Penghapusan berhasil
+                  value:
+                    status: "ok"
+                    message: "Akun dan seluruh data riwayat Anda telah dihapus secara permanen."
+        "500":
+          description: Error server saat menghapus akun
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "Gagal menghapus akun"
+              examples:
+                server_error:
+                  summary: Error server
+                  value:
+                    status: "error"
+                    message: "Gagal menghapus akun"
 
   /chat:
     post:
@@ -1125,52 +1264,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  patient_id:
-                    type: integer
-                  user_id:
-                    type: integer
-                  patient_name:
-                    type: string
-                  background_story:
-                    type: string
-                  personality_type:
-                    type: string
-                    nullable: true
-                  symptom_intensity:
-                    type: integer
-                    nullable: true
-                  age:
-                    type: integer
-                    nullable: true
-                  gender:
-                    type: string
-                    nullable: true
-                  occupation:
-                    type: string
-                    nullable: true
-                  marital_status:
-                    type: string
-                    nullable: true
-                  personality_traits:
-                    type: object
-                    nullable: true
-                  avatar_path:
-                    type: string
-                  profile_image:
-                    type: string
-                    nullable: true
-                  is_active:
-                    type: boolean
-                  is_global:
-                    type: boolean
-                  knowledge_base:
-                    type: array
-                    nullable: true
-                  created_at:
-                    type: string
-                    format: date-time
+                $ref: "#/components/schemas/Patient"
               examples:
                 success:
                   summary: Detail pasien
@@ -1206,6 +1300,302 @@ paths:
                   message:
                     type: string
                     example: "User not authenticated"
+        "404":
+          description: Pasien tidak ditemukan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  message:
+                    type: string
+                    example: "Pasien tidak ditemukan"
+        "500":
+          description: Error server
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  message:
+                    type: string
+
+    put:
+      tags: [Patients]
+      summary: Update data pasien
+      description: >
+        Mengupdate data pasien yang sudah ada. User biasa hanya bisa 
+        mengupdate pasien miliknya sendiri. Admin bisa mengupdate 
+        semua pasien. Sistem akan otomatis regenerate embeddings (RAG) 
+        dari data pasien yang diupdate untuk meningkatkan akurasi 
+        response AI. Hanya admin yang bisa mengubah status is_global.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID pasien yang akan diupdate
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [patient_name, background_story]
+              properties:
+                patient_name:
+                  type: string
+                  description: Nama lengkap pasien
+                  example: "Budi Santoso"
+                background_story:
+                  type: string
+                  description: Latar belakang dan riwayat pasien
+                  example: "Mahasiswa semester 6 yang mengalami anxiety sejak pandemi..."
+                personality_type:
+                  type: string
+                  nullable: true
+                  description: Tipe kepribadian (opsional)
+                  example: "introvert"
+                symptom_intensity:
+                  type: integer
+                  minimum: 1
+                  maximum: 10
+                  nullable: true
+                  description: Intensitas gejala 1-10 (opsional)
+                  example: 7
+                age:
+                  type: integer
+                  nullable: true
+                  description: Usia pasien (harus positif)
+                  example: 22
+                gender:
+                  type: string
+                  nullable: true
+                  description: Jenis kelamin
+                  example: "Laki-laki"
+                occupation:
+                  type: string
+                  nullable: true
+                  description: Pekerjaan/profesi
+                  example: "Mahasiswa"
+                marital_status:
+                  type: string
+                  nullable: true
+                  description: Status pernikahan
+                  example: "Belum Menikah"
+                personality_traits:
+                  type: object
+                  nullable: true
+                  description: Traits kepribadian dalam bentuk key-value
+                  example: { "anxiety_level": "high", "social_comfort": "low" }
+                is_global:
+                  type: boolean
+                  nullable: true
+                  description: Apakah pasien bisa diakses semua user (hanya admin)
+                  example: false
+            examples:
+              complete:
+                summary: Update data lengkap
+                value:
+                  patient_name: "Budi Santoso"
+                  background_story: "Mahasiswa yang mengalami anxiety disorder dan social phobia"
+                  personality_type: "introvert"
+                  symptom_intensity: 8
+                  age: 22
+                  gender: "Laki-laki"
+                  occupation: "Mahasiswa"
+                  marital_status: "Belum Menikah"
+                  personality_traits:
+                    anxiety_level: "very high"
+                    social_comfort: "low"
+                    openness: "medium"
+                  is_global: false
+              partial:
+                summary: Update sebagian field
+                value:
+                  patient_name: "Budi Santoso"
+                  background_story: "Mahasiswa yang mengalami anxiety disorder"
+                  symptom_intensity: 8
+      responses:
+        "200":
+          description: Pasien berhasil diupdate
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  message:
+                    type: string
+                    example: "Data pasien berhasil diperbarui"
+                  data:
+                    $ref: "#/components/schemas/Patient"
+              examples:
+                success:
+                  summary: Update berhasil
+                  value:
+                    status: success
+                    message: "Data pasien berhasil diperbarui"
+                    data:
+                      patient_id: 1
+                      user_id: 1
+                      patient_name: "Budi Santoso"
+                      background_story: "Mahasiswa yang mengalami anxiety disorder dan social phobia"
+                      personality_type: "introvert"
+                      symptom_intensity: 8
+                      age: 22
+                      gender: "Laki-laki"
+                      occupation: "Mahasiswa"
+                      marital_status: "Belum Menikah"
+                      personality_traits:
+                        anxiety_level: "very high"
+                        social_comfort: "low"
+                      avatar_path: "/models/default.glb"
+                      is_active: true
+                      is_global: false
+                      knowledge_base: [
+                        {
+                          text: "Mahasiswa semester 6 yang mengalami anxiety dan social phobia",
+                          vector: [0.123, 0.456, ...]
+                        }
+                      ]
+        "400":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  message:
+                    type: string
+              examples:
+                missing_required:
+                  summary: Field required tidak diisi
+                  value:
+                    status: error
+                    message: "Nama dan latar belakang wajib diisi."
+        "403":
+          description: Akses ditolak
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  message:
+                    type: string
+              examples:
+                forbidden:
+                  summary: User tidak punya akses
+                  value:
+                    status: error
+                    message: "Akses ditolak: Anda hanya dapat mengubah pasien buatan sendiri."
+        "404":
+          description: Pasien tidak ditemukan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  message:
+                    type: string
+                    example: "Pasien tidak ditemukan"
+        "500":
+          description: Error server atau gagal generate embedding
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  message:
+                    type: string
+              examples:
+                embedding_error:
+                  summary: Gagal generate embedding
+                  value:
+                    status: error
+                    message: "Gagal memperbarui AI Knowledge."
+                server_error:
+                  summary: Error server
+                  value:
+                    status: error
+                    message: "Internal server error"
+
+    delete:
+      tags: [Patients]
+      summary: Hapus pasien
+      description: >
+        Menghapus pasien secara permanen. User biasa hanya bisa 
+        menghapus pasien miliknya sendiri. Admin bisa menghapus 
+        semua pasien. Operasi ini akan menghapus semua data terkait 
+        pasien termasuk session dan transkrip yang menggunakan pasien ini.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID pasien yang akan dihapus
+          schema:
+            type: integer
+          example: 1
+      responses:
+        "200":
+          description: Pasien berhasil dihapus
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  message:
+                    type: string
+                    example: "Pasien berhasil dihapus secara permanen."
+              examples:
+                success:
+                  summary: Penghapusan berhasil
+                  value:
+                    status: success
+                    message: "Pasien berhasil dihapus secara permanen."
+        "403":
+          description: Akses ditolak
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  message:
+                    type: string
+              examples:
+                forbidden:
+                  summary: User tidak punya akses
+                  value:
+                    status: error
+                    message: "Akses ditolak: Anda tidak memiliki izin untuk menghapus pasien ini."
         "404":
           description: Pasien tidak ditemukan
           content:
