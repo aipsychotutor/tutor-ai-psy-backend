@@ -11,13 +11,13 @@ const swaggerDefinition = {
     },
     servers: [
         {
-            url: 'http://localhost:3000/api', // Sesuaikan dengan base URL API Anda
+            url: 'http://localhost:3000/api', // Sesuaikan dengan base URL API
             description: 'Server Pengembangan Lokal',
         },
     ],
     components: {
         securitySchemes: {
-            // Definisikan skema otentikasi Bearer Token
+            // Skema otentikasi Bearer Token
             bearerAuth: {
                 type: 'http',
                 scheme: 'bearer',
@@ -26,7 +26,7 @@ const swaggerDefinition = {
         },
     },
     security: [
-        // Terapkan secara default untuk semua endpoint
+        // Default untuk semua endpoint
         {
             bearerAuth: [], 
         },
@@ -35,8 +35,9 @@ const swaggerDefinition = {
 
 const options = {
     swaggerDefinition,
-    // Path to API docs (tempat swagger-jsdoc mencari file route Anda)
-    apis: ['./routes/*.js'], 
+    // Path to API docs (tempat swagger-jsdoc mencari file route)
+    apis: ['./routes/*.js',
+  './docs/*.swagger.js'], 
 };
 
 export const swaggerSpec = swaggerJSDoc(options);

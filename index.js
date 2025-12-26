@@ -1,7 +1,9 @@
 import cors from "cors";
 import express from "express";
 import swaggerUi from 'swagger-ui-express';
-import { swaggerSpec } from './swaggerConfig.js';
+import YAML from "yamljs";
+import path from "path";
+import { fileURLToPath } from "url";
 
 import dotenv from "dotenv";
 dotenv.config();
@@ -17,6 +19,12 @@ import chatRoutes from "./routes/chat.js";
 // Middleware
 import authMiddleware from "./middleware/authMiddleware.js";
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// ===== Load Swagger YAML =====
+const swaggerDocument = YAML.load(path.join(__dirname, "openApi.yaml"));
+
 // ========== CONFIG ==========
 const app = express();
 const port = 3000;
@@ -28,11 +36,11 @@ app.use(
   })
 );
 
-// Swagger API Documentation
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-app.get('/api-docs.json', (req, res) => {
-  res.setHeader('Content-Type', 'application/json');
-  res.send(swaggerSpec);
+// ===== Swagger UI =====
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+app.get("/api-docs.json", (req, res) => {
+  res.setHeader("Content-Type", "application/json");
+  res.send(swaggerDocument);
 });
 
 // Rute dasar

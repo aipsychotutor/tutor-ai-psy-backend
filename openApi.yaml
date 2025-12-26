@@ -1,0 +1,2586 @@
+openapi: 3.0.3
+info:
+  title: Commulab System API
+  description: >
+    API untuk autentikasi, manajemen pasien, sesi konseling,
+    chat AI, transkrip, evaluasi, dan laporan statistik.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:3000/api
+    description: Local development server
+
+tags:
+  - name: Auth
+    description: Autentikasi pengguna
+  - name: Chat
+    description: Chat AI dan persona
+  - name: Patients
+    description: Manajemen data pasien dan embedding
+  - name: Sessions
+    description: Manajemen sesi konseling
+  - name: Reports
+    description: Transkrip, evaluasi, dan statistik
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: "Error message"
+
+    AuthSuccessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        user:
+          $ref: "#/components/schemas/User"
+        token:
+          type: string
+          description: JWT token berlaku 3 jam
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+    User:
+      type: object
+      properties:
+        user_id:
+          type: integer
+          example: 1
+        username:
+          type: string
+          example: "johndoe"
+        email:
+          type: string
+          format: email
+          example: "john@example.com"
+        role:
+          type: string
+          enum: [user, admin]
+          example: "user"
+        is_admin:
+          type: boolean
+          example: false
+        created_at:
+          type: string
+          format: date-time
+          example: "2024-12-27T10:00:00.000Z"
+
+    Patient:
+      type: object
+      properties:
+        patient_id:
+          type: integer
+          example: 1
+        user_id:
+          type: integer
+          example: 1
+        patient_name:
+          type: string
+          example: "Budi Santoso"
+        background_story:
+          type: string
+          example: "Mahasiswa yang mengalami anxiety disorder"
+        personality_type:
+          type: string
+          nullable: true
+          example: "introvert"
+        symptom_intensity:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 10
+          example: 7
+        age:
+          type: integer
+          nullable: true
+          example: 22
+        gender:
+          type: string
+          nullable: true
+          example: "Laki-laki"
+        occupation:
+          type: string
+          nullable: true
+          example: "Mahasiswa"
+        marital_status:
+          type: string
+          nullable: true
+          example: "Belum Menikah"
+        personality_traits:
+          type: object
+          nullable: true
+          example: { "anxiety_level": "high", "social_comfort": "low" }
+        avatar_path:
+          type: string
+          example: "/models/default.glb"
+        profile_image:
+          type: string
+          nullable: true
+          example: "/uploads/patient_1.jpg"
+        is_active:
+          type: boolean
+          example: true
+        is_global:
+          type: boolean
+          example: false
+        knowledge_base:
+          type: array
+          nullable: true
+          items:
+            type: object
+            properties:
+              text:
+                type: string
+              vector:
+                type: array
+                items:
+                  type: number
+        created_at:
+          type: string
+          format: date-time
+          example: "2024-12-27T10:00:00.000Z"
+
+    Session:
+      type: object
+      properties:
+        session_id:
+          type: integer
+          example: 1
+        user_id:
+          type: integer
+          example: 1
+        patient_id:
+          type: integer
+          example: 5
+        start_time:
+          type: string
+          format: date-time
+          example: "2024-12-27T10:00:00.000Z"
+        end_time:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2024-12-27T11:30:00.000Z"
+        status:
+          type: string
+          enum: [ongoing, completed, cancelled]
+          example: "ongoing"
+
+    SessionWithPatient:
+      type: object
+      properties:
+        session_id:
+          type: integer
+          example: 1
+        patient_id:
+          type: integer
+          example: 5
+        patient_name:
+          type: string
+          example: "Budi Santoso"
+        patient_image:
+          type: string
+          nullable: true
+          example: "/uploads/patient_5.jpg"
+        start_time:
+          type: string
+          format: date-time
+          example: "2024-12-27T10:00:00.000Z"
+        end_time:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2024-12-27T11:30:00.000Z"
+        status:
+          type: string
+          enum: [ongoing, completed, cancelled]
+          example: "ongoing"
+
+    Evaluation:
+      type: object
+      properties:
+        session_id:
+          type: integer
+          example: 1
+        user_id:
+          type: integer
+          example: 1
+        empathy_score:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 85
+        question_score:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 78
+        feedback_text:
+          type: string
+          nullable: true
+          example: "Konselor menunjukkan empati yang baik"
+        evaluated:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+          example: "2024-12-27T11:00:00.000Z"
+
+    Transcript:
+      type: object
+      properties:
+        transcript_id:
+          type: integer
+          example: 1
+        session_id:
+          type: integer
+          example: 1
+        sender:
+          type: string
+          enum: [user, ai]
+          example: "user"
+        message:
+          type: string
+          example: "Saya merasa cemas belakangan ini"
+        prosody_data:
+          type: object
+          nullable: true
+          properties:
+            pitch:
+              type: number
+              example: 220.5
+            energy:
+              type: number
+              example: 0.75
+            tempo:
+              type: number
+              example: 1.2
+        timestamp:
+          type: string
+          format: date-time
+          example: "2024-12-27T10:15:30.000Z"
+
+    Persona:
+      type: object
+      properties:
+        persona_id:
+          type: integer
+          example: 1
+        patient_id:
+          type: integer
+          example: 5
+        name:
+          type: string
+          example: "Budi Santoso"
+        background_story:
+          type: string
+          example: "Mahasiswa semester 6 yang mengalami anxiety"
+        personality_type:
+          type: string
+          example: "introvert"
+        symptom_intensity:
+          type: integer
+          example: 7
+        personality_traits:
+          type: object
+          example: { "anxiety_level": "high", "openness": "medium" }
+
+    ChatMessage:
+      type: object
+      properties:
+        text:
+          type: string
+          description: Text response dari AI
+          example: "Saya mengerti perasaanmu. Ceritakan lebih lanjut?"
+        facialExpression:
+          type: string
+          description: Ekspresi wajah avatar
+          enum: [smile, sad, angry, surprised, default]
+          example: "smile"
+        animation:
+          type: string
+          description: Nama animasi avatar
+          example: "Talking_1"
+        audio:
+          type: string
+          nullable: true
+          description: Base64 audio atau URL audio dari ElevenLabs
+          example: "data:audio/mpeg;base64,..."
+
+security:
+  - BearerAuth: []
+
+paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      security: []
+      summary: Registrasi user baru
+      description: >
+        Membuat akun user baru dengan username, email, dan password.
+        Password harus minimal 8 karakter dan mengandung huruf besar, 
+        huruf kecil, dan angka. Setelah registrasi berhasil, user 
+        otomatis mendapat JWT token yang berlaku 3 jam.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, email, password]
+              properties:
+                username:
+                  type: string
+                  example: johndoe
+                  description: Username unik untuk user
+                email:
+                  type: string
+                  format: email
+                  example: john@example.com
+                  description: Email unik untuk user
+                password:
+                  type: string
+                  minLength: 8
+                  example: Password123
+                  description: >
+                    Minimal 8 karakter, harus mengandung:
+                    - Minimal 1 huruf besar (A-Z)
+                    - Minimal 1 huruf kecil (a-z)
+                    - Minimal 1 angka (0-9)
+            examples:
+              valid:
+                summary: Request valid
+                value:
+                  username: johndoe
+                  email: john@example.com
+                  password: Password123
+      responses:
+        "200":
+          description: Registrasi berhasil
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSuccessResponse"
+              examples:
+                success:
+                  summary: Registrasi berhasil
+                  value:
+                    status: ok
+                    user:
+                      user_id: 1
+                      username: johndoe
+                      email: john@example.com
+                      role: user
+                      is_admin: false
+                      created_at: "2024-12-27T10:00:00.000Z"
+                    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        "400":
+          description: Registrasi gagal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                missing_fields:
+                  summary: Field tidak lengkap
+                  value:
+                    status: error
+                    message: Username, email, dan password harus diisi
+                weak_password:
+                  summary: Password tidak memenuhi syarat
+                  value:
+                    status: error
+                    message: Password minimal 8 karakter, mengandung huruf besar, huruf kecil, dan angka
+                email_exists:
+                  summary: Email sudah terdaftar
+                  value:
+                    status: error
+                    message: Email sudah terdaftar. Silakan login.
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      security: []
+      summary: Login user
+      description: >
+        Login menggunakan email dan password. Jika berhasil, 
+        akan mendapat JWT token yang berlaku 3 jam. Token ini 
+        digunakan untuk autentikasi endpoint lain dengan format 
+        header: Authorization: Bearer <token>
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: john@example.com
+                password:
+                  type: string
+                  example: Password123
+            examples:
+              valid:
+                summary: Login valid
+                value:
+                  email: john@example.com
+                  password: Password123
+      responses:
+        "200":
+          description: Login berhasil
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSuccessResponse"
+              examples:
+                success_user:
+                  summary: Login sebagai user biasa
+                  value:
+                    status: ok
+                    user:
+                      user_id: 1
+                      username: johndoe
+                      email: john@example.com
+                      role: user
+                      is_admin: false
+                      created_at: "2024-12-27T10:00:00.000Z"
+                    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                success_admin:
+                  summary: Login sebagai admin
+                  value:
+                    status: ok
+                    user:
+                      user_id: 2
+                      username: admin
+                      email: admin@example.com
+                      role: admin
+                      is_admin: true
+                      created_at: "2024-12-27T09:00:00.000Z"
+                    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        "400":
+          description: Login gagal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                missing_fields:
+                  summary: Field tidak lengkap
+                  value:
+                    status: error
+                    message: Email dan password harus diisi
+                invalid_credentials:
+                  summary: Email atau password salah
+                  value:
+                    status: error
+                    message: Email atau password salah.
+
+  /chat:
+    post:
+      tags: [Chat]
+      summary: Kirim pesan chat ke AI
+      description: >
+        Mengirim pesan user ke AI dan mendapat response dalam bentuk 
+        array messages yang berisi text, facial expression, animation, 
+        dan audio. Jika message kosong, AI akan memberikan greeting default.
+        Prosody data opsional untuk analisis intonasi suara user.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                  description: Pesan dari user
+                  example: "Saya merasa sedih hari ini"
+                session_id:
+                  type: integer
+                  description: ID session konseling yang aktif
+                  example: 1
+                prosody_data:
+                  type: object
+                  description: Data prosody/intonasi suara (opsional)
+                  properties:
+                    pitch:
+                      type: number
+                      example: 220.5
+                    energy:
+                      type: number
+                      example: 0.75
+                    tempo:
+                      type: number
+                      example: 1.2
+            examples:
+              with_message:
+                summary: Chat dengan pesan
+                value:
+                  message: "Saya merasa cemas belakangan ini"
+                  session_id: 1
+                  prosody_data:
+                    pitch: 250.3
+                    energy: 0.65
+                    tempo: 1.1
+              empty_message:
+                summary: Greeting (message kosong)
+                value:
+                  message: ""
+                  session_id: 1
+      responses:
+        "200":
+          description: Respon chat berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  messages:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        text:
+                          type: string
+                          description: Text response dari AI
+                          example: "Saya mengerti perasaanmu. Ceritakan lebih lanjut?"
+                        facialExpression:
+                          type: string
+                          description: Ekspresi wajah avatar
+                          enum: [smile, sad, angry, surprised, default]
+                          example: "smile"
+                        animation:
+                          type: string
+                          description: Nama animasi avatar
+                          example: "Talking_1"
+                        audio:
+                          type: string
+                          nullable: true
+                          description: Base64 audio atau URL audio dari ElevenLabs
+                          example: "data:audio/mpeg;base64,..."
+              examples:
+                ai_response:
+                  summary: Response normal dari AI
+                  value:
+                    success: true
+                    messages:
+                      - text: "Saya mendengarkan. Ceritakan lebih lanjut tentang perasaanmu."
+                        facialExpression: "smile"
+                        animation: "Talking_1"
+                        audio: "data:audio/mpeg;base64,..."
+                default_greeting:
+                  summary: Greeting default (message kosong)
+                  value:
+                    messages:
+                      - text: "Hai... bagaimana kabarmu hari ini?"
+                        facialExpression: "smile"
+                        animation: "Talking_1"
+                        audio: null
+        "500":
+          description: Error server atau API key belum diset
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "API key belum diset."
+              examples:
+                api_key_error:
+                  summary: API key tidak tersedia
+                  value:
+                    message: "API key belum diset."
+                processing_error:
+                  summary: Error saat processing
+                  value:
+                    success: false
+                    message: "Error processing chat message"
+
+  /chat/persona/{session_id}:
+    get:
+      tags: [Chat]
+      summary: Ambil persona aktif berdasarkan session
+      description: >
+        Mengambil data persona AI yang sedang aktif untuk session tertentu.
+        Persona berisi karakteristik AI seperti personality, background, 
+        dan traits yang digunakan dalam percakapan.
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          description: ID session konseling
+          schema:
+            type: integer
+          example: 1
+      responses:
+        "200":
+          description: Persona berhasil diambil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  persona:
+                    type: object
+                    description: Data persona AI aktif
+                    properties:
+                      persona_id:
+                        type: integer
+                        example: 1
+                      patient_id:
+                        type: integer
+                        example: 5
+                      name:
+                        type: string
+                        example: "Budi Santoso"
+                      background_story:
+                        type: string
+                        example: "Seorang mahasiswa yang mengalami kecemasan..."
+                      personality_type:
+                        type: string
+                        example: "introvert"
+                      symptom_intensity:
+                        type: integer
+                        example: 7
+                      personality_traits:
+                        type: object
+                        example: { "anxiety_level": "high", "openness": "medium" }
+              examples:
+                success:
+                  summary: Persona ditemukan
+                  value:
+                    success: true
+                    persona:
+                      persona_id: 1
+                      patient_id: 5
+                      name: "Budi Santoso"
+                      background_story: "Mahasiswa semester 6 yang mengalami anxiety"
+                      personality_type: "introvert"
+                      symptom_intensity: 7
+                      personality_traits:
+                        anxiety_level: "high"
+                        social_comfort: "low"
+        "500":
+          description: Error saat mengambil persona
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "Persona tidak ditemukan untuk session ini"
+
+  /chat/set-persona-from-patient:
+    post:
+      tags: [Chat]
+      summary: Set persona AI dari data patient
+      description: >
+        Mengatur persona AI berdasarkan data pasien yang ada. 
+        Persona akan digunakan AI untuk berperilaku sesuai 
+        karakteristik pasien dalam simulasi konseling.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [patient_id]
+              properties:
+                patient_id:
+                  type: integer
+                  description: ID pasien yang akan dijadikan persona
+                  example: 5
+            examples:
+              valid:
+                summary: Set persona dengan patient_id
+                value:
+                  patient_id: 5
+      responses:
+        "200":
+          description: Persona berhasil diset
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Persona berhasil diset dari data patient"
+                  activePersona:
+                    type: object
+                    description: Data persona yang baru diset
+                    properties:
+                      persona_id:
+                        type: integer
+                      patient_id:
+                        type: integer
+                      name:
+                        type: string
+                      background_story:
+                        type: string
+                  patient_id:
+                    type: integer
+                    description: ID pasien yang digunakan
+                    example: 5
+              examples:
+                success:
+                  summary: Persona berhasil diset
+                  value:
+                    success: true
+                    message: "Persona berhasil diset dari data patient"
+                    activePersona:
+                      persona_id: 1
+                      patient_id: 5
+                      name: "Budi Santoso"
+                      background_story: "Mahasiswa yang mengalami anxiety"
+                      personality_type: "introvert"
+                      symptom_intensity: 7
+                    patient_id: 5
+        "400":
+          description: patient_id tidak diberikan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "patient_id is required"
+        "500":
+          description: Error saat set persona
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "Patient tidak ditemukan"
+
+  /patients:
+    get:
+      tags: [Patients]
+      summary: Ambil semua pasien
+      description: >
+        Mengambil daftar pasien berdasarkan user yang login. 
+        User biasa hanya bisa melihat pasien miliknya sendiri dan pasien global.
+        Admin bisa melihat semua pasien.
+      responses:
+        "200":
+          description: Daftar pasien berhasil diambil
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    patient_id:
+                      type: integer
+                      example: 1
+                    patient_name:
+                      type: string
+                      example: "Budi Santoso"
+                    personality_traits:
+                      type: object
+                      nullable: true
+                      example: { "anxiety_level": "high", "openness": "medium" }
+                    avatar_path:
+                      type: string
+                      example: "/models/default.glb"
+                    created_at:
+                      type: string
+                      format: date-time
+                      example: "2024-12-27T10:00:00.000Z"
+                    is_active:
+                      type: boolean
+                      example: true
+                    is_global:
+                      type: boolean
+                      example: false
+                    user_id:
+                      type: integer
+                      example: 1
+              examples:
+                success:
+                  summary: Daftar pasien
+                  value:
+                    - patient_id: 1
+                      patient_name: "Budi Santoso"
+                      personality_traits: { "anxiety_level": "high" }
+                      avatar_path: "/models/default.glb"
+                      created_at: "2024-12-27T10:00:00.000Z"
+                      is_active: true
+                      is_global: false
+                      user_id: 1
+                    - patient_id: 2
+                      patient_name: "Siti Aminah"
+                      personality_traits: { "depression_level": "medium" }
+                      avatar_path: "/models/default.glb"
+                      created_at: "2024-12-26T09:00:00.000Z"
+                      is_active: true
+                      is_global: true
+                      user_id: 2
+        "500":
+          description: Error server
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  message:
+                    type: string
+
+    post:
+      tags: [Patients]
+      summary: Tambah pasien baru
+      description: >
+        Membuat pasien baru dengan data lengkap. Sistem akan otomatis 
+        generate embeddings (RAG) dari data pasien untuk meningkatkan 
+        akurasi response AI. Jika embedding gagal, pasien tetap dibuat 
+        tanpa RAG data.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [patient_name, background_story]
+              properties:
+                patient_name:
+                  type: string
+                  description: Nama lengkap pasien
+                  example: "Budi Santoso"
+                background_story:
+                  type: string
+                  description: Latar belakang dan riwayat pasien
+                  example: "Mahasiswa semester 6 yang mengalami anxiety sejak pandemi..."
+                personality_type:
+                  type: string
+                  nullable: true
+                  description: Tipe kepribadian (opsional)
+                  example: "introvert"
+                symptom_intensity:
+                  type: integer
+                  minimum: 1
+                  maximum: 10
+                  nullable: true
+                  description: Intensitas gejala 1-10 (opsional)
+                  example: 7
+                age:
+                  type: integer
+                  nullable: true
+                  description: Usia pasien (harus positif)
+                  example: 22
+                gender:
+                  type: string
+                  nullable: true
+                  description: Jenis kelamin
+                  example: "Laki-laki"
+                occupation:
+                  type: string
+                  nullable: true
+                  description: Pekerjaan/profesi
+                  example: "Mahasiswa"
+                marital_status:
+                  type: string
+                  nullable: true
+                  description: Status pernikahan
+                  example: "Belum Menikah"
+                personality_traits:
+                  type: object
+                  nullable: true
+                  description: Traits kepribadian dalam bentuk key-value
+                  example: { "anxiety_level": "high", "social_comfort": "low" }
+                is_global:
+                  type: boolean
+                  nullable: true
+                  description: Apakah pasien bisa diakses semua user
+                  example: false
+                  default: false
+            examples:
+              complete:
+                summary: Data lengkap
+                value:
+                  patient_name: "Budi Santoso"
+                  background_story: "Mahasiswa yang mengalami anxiety disorder"
+                  personality_type: "introvert"
+                  symptom_intensity: 7
+                  age: 22
+                  gender: "Laki-laki"
+                  occupation: "Mahasiswa"
+                  marital_status: "Belum Menikah"
+                  personality_traits:
+                    anxiety_level: "high"
+                    social_comfort: "low"
+                    openness: "medium"
+                  is_global: false
+              minimal:
+                summary: Data minimal (required only)
+                value:
+                  patient_name: "Siti Aminah"
+                  background_story: "Pasien dengan riwayat depresi ringan"
+      responses:
+        "201":
+          description: Pasien berhasil ditambahkan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  message:
+                    type: string
+                    example: "Pasien berhasil ditambahkan"
+                  data:
+                    type: object
+                    properties:
+                      patient_id:
+                        type: integer
+                        example: 1
+                      user_id:
+                        type: integer
+                        example: 1
+                      patient_name:
+                        type: string
+                        example: "Budi Santoso"
+                      background_story:
+                        type: string
+                      personality_type:
+                        type: string
+                        nullable: true
+                      symptom_intensity:
+                        type: integer
+                        nullable: true
+                      age:
+                        type: integer
+                        nullable: true
+                      gender:
+                        type: string
+                        nullable: true
+                      occupation:
+                        type: string
+                        nullable: true
+                      marital_status:
+                        type: string
+                        nullable: true
+                      personality_traits:
+                        type: object
+                        nullable: true
+                      avatar_path:
+                        type: string
+                        example: "/models/default.glb"
+                      is_active:
+                        type: boolean
+                        example: true
+                      is_global:
+                        type: boolean
+                        example: false
+                      knowledge_base:
+                        type: array
+                        nullable: true
+                        description: RAG embeddings (jika berhasil generate)
+                        items:
+                          type: object
+                          properties:
+                            text:
+                              type: string
+                            vector:
+                              type: array
+                              items:
+                                type: number
+              examples:
+                success:
+                  summary: Pasien berhasil dibuat
+                  value:
+                    status: success
+                    message: "Pasien berhasil ditambahkan"
+                    data:
+                      patient_id: 1
+                      user_id: 1
+                      patient_name: "Budi Santoso"
+                      background_story: "Mahasiswa yang mengalami anxiety"
+                      personality_type: "introvert"
+                      symptom_intensity: 7
+                      age: 22
+                      gender: "Laki-laki"
+                      occupation: "Mahasiswa"
+                      marital_status: "Belum Menikah"
+                      personality_traits:
+                        anxiety_level: "high"
+                      avatar_path: "/models/default.glb"
+                      is_active: true
+                      is_global: false
+                      knowledge_base: [
+                        {
+                          text: "Mahasiswa semester 6 yang mengalami anxiety",
+                          vector: [0.123, 0.456, ...]
+                        }
+                      ]
+        "400":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  message:
+                    type: string
+              examples:
+                missing_required:
+                  summary: Field required tidak diisi
+                  value:
+                    status: error
+                    message: "patient_name dan background_story harus diisi"
+                invalid_intensity:
+                  summary: Intensitas tidak valid
+                  value:
+                    status: error
+                    message: "symptom_intensity harus antara 1-10"
+                invalid_age:
+                  summary: Age tidak valid
+                  value:
+                    status: error
+                    message: "age harus bernilai positif"
+        "500":
+          description: Error server
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  message:
+                    type: string
+
+  /patients/{id}:
+    get:
+      tags: [Patients]
+      summary: Ambil detail pasien
+      description: >
+        Mengambil detail lengkap pasien berdasarkan ID.
+        User biasa hanya bisa mengakses pasien miliknya sendiri atau pasien global.
+        Admin bisa mengakses semua pasien.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID pasien
+          schema:
+            type: integer
+          example: 1
+      responses:
+        "200":
+          description: Detail pasien
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  patient_id:
+                    type: integer
+                  user_id:
+                    type: integer
+                  patient_name:
+                    type: string
+                  background_story:
+                    type: string
+                  personality_type:
+                    type: string
+                    nullable: true
+                  symptom_intensity:
+                    type: integer
+                    nullable: true
+                  age:
+                    type: integer
+                    nullable: true
+                  gender:
+                    type: string
+                    nullable: true
+                  occupation:
+                    type: string
+                    nullable: true
+                  marital_status:
+                    type: string
+                    nullable: true
+                  personality_traits:
+                    type: object
+                    nullable: true
+                  avatar_path:
+                    type: string
+                  profile_image:
+                    type: string
+                    nullable: true
+                  is_active:
+                    type: boolean
+                  is_global:
+                    type: boolean
+                  knowledge_base:
+                    type: array
+                    nullable: true
+                  created_at:
+                    type: string
+                    format: date-time
+              examples:
+                success:
+                  summary: Detail pasien
+                  value:
+                    patient_id: 1
+                    user_id: 1
+                    patient_name: "Budi Santoso"
+                    background_story: "Mahasiswa yang mengalami anxiety"
+                    personality_type: "introvert"
+                    symptom_intensity: 7
+                    age: 22
+                    gender: "Laki-laki"
+                    occupation: "Mahasiswa"
+                    marital_status: "Belum Menikah"
+                    personality_traits:
+                      anxiety_level: "high"
+                    avatar_path: "/models/default.glb"
+                    profile_image: null
+                    is_active: true
+                    is_global: false
+                    knowledge_base: []
+                    created_at: "2024-12-27T10:00:00.000Z"
+        "401":
+          description: User tidak terautentikasi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  message:
+                    type: string
+                    example: "User not authenticated"
+        "404":
+          description: Pasien tidak ditemukan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  message:
+                    type: string
+                    example: "Pasien tidak ditemukan"
+        "500":
+          description: Error server
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  message:
+                    type: string
+
+  /patients/model/{patientId}:
+    get:
+      tags: [Patients]
+      summary: Ambil path model avatar pasien
+      description: >
+        Mengambil path file 3D model (.glb) untuk avatar pasien.
+        Jika pasien tidak memiliki avatar custom, akan return default avatar.
+      parameters:
+        - name: patientId
+          in: path
+          required: true
+          description: ID pasien
+          schema:
+            type: integer
+          example: 1
+      responses:
+        "200":
+          description: Path avatar pasien
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  avatar_path:
+                    type: string
+                    description: Path ke file 3D model avatar
+                    example: "/models/default.glb"
+              examples:
+                custom_avatar:
+                  summary: Avatar custom
+                  value:
+                    avatar_path: "/models/patient_1_avatar.glb"
+                default_avatar:
+                  summary: Avatar default
+                  value:
+                    avatar_path: "/models/default.glb"
+        "404":
+          description: Pasien tidak ditemukan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Pasien tidak ditemukan"
+        "500":
+          description: Error server
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+
+  /patients/migrate-embeddings:
+    post:
+      tags: [Patients]
+      summary: Migrasi embedding pasien (RAG)
+      description: >
+        Melakukan migrasi/regenerasi embeddings untuk semua pasien 
+        yang belum memiliki knowledge_base atau perlu update.
+        Proses ini menggunakan Google Gemini API untuk generate 
+        vector embeddings dari data pasien. Endpoint ini untuk 
+        maintenance/migration purposes.
+      responses:
+        "200":
+          description: Migrasi embedding berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  message:
+                    type: string
+                    example: "Berhasil migrasi 5 dari 10 pasien."
+              examples:
+                success:
+                  summary: Migrasi berhasil
+                  value:
+                    status: success
+                    message: "Berhasil migrasi 5 dari 10 pasien."
+                no_patients:
+                  summary: Tidak ada pasien yang perlu migrasi
+                  value:
+                    status: success
+                    message: "Berhasil migrasi 0 dari 0 pasien."
+        "500":
+          description: Error saat migrasi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Failed to generate embeddings"
+          
+  /sessions:
+    get:
+      tags: [Sessions]
+      summary: Ambil semua sesi user
+      description: >
+        Mengambil daftar semua session milik user yang sedang login.
+        Bisa difilter berdasarkan patient_id atau status session.
+        Response mencakup informasi patient yang terkait.
+      parameters:
+        - name: patient_id
+          in: query
+          required: false
+          description: Filter berdasarkan ID pasien
+          schema:
+            type: integer
+          example: 5
+        - name: status
+          in: query
+          required: false
+          description: Filter berdasarkan status session
+          schema:
+            type: string
+            enum: [ongoing, completed, cancelled]
+          example: ongoing
+      responses:
+        "200":
+          description: Daftar sesi berhasil diambil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        session_id:
+                          type: integer
+                          example: 1
+                        patient_id:
+                          type: integer
+                          example: 5
+                        patient_name:
+                          type: string
+                          example: "Budi Santoso"
+                        patient_image:
+                          type: string
+                          nullable: true
+                          example: "/uploads/patient_5.jpg"
+                        start_time:
+                          type: string
+                          format: date-time
+                          example: "2024-12-27T10:00:00.000Z"
+                        end_time:
+                          type: string
+                          format: date-time
+                          nullable: true
+                          example: "2024-12-27T11:30:00.000Z"
+                        status:
+                          type: string
+                          enum: [ongoing, completed, cancelled]
+                          example: "ongoing"
+              examples:
+                all_sessions:
+                  summary: Semua session user
+                  value:
+                    success: true
+                    data:
+                      - session_id: 1
+                        patient_id: 5
+                        patient_name: "Budi Santoso"
+                        patient_image: null
+                        start_time: "2024-12-27T10:00:00.000Z"
+                        end_time: null
+                        status: "ongoing"
+                      - session_id: 2
+                        patient_id: 5
+                        patient_name: "Budi Santoso"
+                        patient_image: null
+                        start_time: "2024-12-26T14:00:00.000Z"
+                        end_time: "2024-12-26T15:30:00.000Z"
+                        status: "completed"
+                filtered_by_patient:
+                  summary: Filter berdasarkan patient_id
+                  value:
+                    success: true
+                    data:
+                      - session_id: 1
+                        patient_id: 5
+                        patient_name: "Budi Santoso"
+                        patient_image: null
+                        start_time: "2024-12-27T10:00:00.000Z"
+                        end_time: null
+                        status: "ongoing"
+                filtered_by_status:
+                  summary: Filter berdasarkan status
+                  value:
+                    success: true
+                    data:
+                      - session_id: 3
+                        patient_id: 7
+                        patient_name: "Siti Aminah"
+                        patient_image: "/uploads/patient_7.jpg"
+                        start_time: "2024-12-25T09:00:00.000Z"
+                        end_time: "2024-12-25T10:15:00.000Z"
+                        status: "completed"
+        "500":
+          description: Error server
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "Error retrieving sessions"
+
+    post:
+      tags: [Sessions]
+      summary: Buat sesi konseling baru
+      description: >
+        Membuat session konseling baru dengan pasien tertentu.
+        User hanya bisa membuat session untuk pasien yang ia miliki
+        atau pasien global. Session baru akan memiliki status "ongoing"
+        dan start_time otomatis diset ke waktu saat ini.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [patient_id]
+              properties:
+                patient_id:
+                  type: integer
+                  description: ID pasien untuk session ini
+                  example: 5
+            examples:
+              valid:
+                summary: Membuat session baru
+                value:
+                  patient_id: 5
+      responses:
+        "201":
+          description: Session berhasil dibuat
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      session_id:
+                        type: integer
+                        example: 1
+                      user_id:
+                        type: integer
+                        example: 1
+                      patient_id:
+                        type: integer
+                        example: 5
+                      start_time:
+                        type: string
+                        format: date-time
+                        example: "2024-12-27T10:00:00.000Z"
+                      end_time:
+                        type: string
+                        format: date-time
+                        nullable: true
+                        example: null
+                      status:
+                        type: string
+                        example: "ongoing"
+              examples:
+                success:
+                  summary: Session berhasil dibuat
+                  value:
+                    success: true
+                    data:
+                      session_id: 1
+                      user_id: 1
+                      patient_id: 5
+                      start_time: "2024-12-27T10:00:00.000Z"
+                      end_time: null
+                      status: "ongoing"
+        "404":
+          description: Patient tidak ditemukan atau tidak punya akses
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "Patient tidak ditemukan atau Anda tidak punya akses."
+        "500":
+          description: Error server
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+
+  /sessions/{id}:
+    get:
+      tags: [Sessions]
+      summary: Ambil detail session
+      description: >
+        Mengambil detail lengkap session berdasarkan ID.
+        User hanya bisa mengakses session miliknya sendiri.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID session
+          schema:
+            type: integer
+          example: 1
+      responses:
+        "200":
+          description: Detail session berhasil diambil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      session_id:
+                        type: integer
+                        example: 1
+                      user_id:
+                        type: integer
+                        example: 1
+                      patient_id:
+                        type: integer
+                        example: 5
+                      start_time:
+                        type: string
+                        format: date-time
+                        example: "2024-12-27T10:00:00.000Z"
+                      end_time:
+                        type: string
+                        format: date-time
+                        nullable: true
+                        example: "2024-12-27T11:30:00.000Z"
+                      status:
+                        type: string
+                        example: "ongoing"
+              examples:
+                ongoing_session:
+                  summary: Session yang masih berjalan
+                  value:
+                    success: true
+                    data:
+                      session_id: 1
+                      user_id: 1
+                      patient_id: 5
+                      start_time: "2024-12-27T10:00:00.000Z"
+                      end_time: null
+                      status: "ongoing"
+                completed_session:
+                  summary: Session yang sudah selesai
+                  value:
+                    success: true
+                    data:
+                      session_id: 2
+                      user_id: 1
+                      patient_id: 5
+                      start_time: "2024-12-26T14:00:00.000Z"
+                      end_time: "2024-12-26T15:30:00.000Z"
+                      status: "completed"
+        "404":
+          description: Session tidak ditemukan atau tidak punya akses
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+              examples:
+                not_found:
+                  summary: Session tidak ditemukan
+                  value:
+                    success: false
+                    message: "Session tidak ditemukan"
+                no_access:
+                  summary: Tidak punya akses
+                  value:
+                    success: false
+                    message: "User tidak punya akses ke session ini"
+        "500":
+          description: Error server
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+
+    patch:
+      tags: [Sessions]
+      summary: Update session
+      description: >
+        Mengupdate data session seperti status atau end_time.
+        User hanya bisa update session miliknya sendiri.
+        Status valid: ongoing, completed, cancelled.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID session yang akan diupdate
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [ongoing, completed, cancelled]
+                  description: Status session baru
+                  example: "completed"
+                end_time:
+                  type: string
+                  format: date-time
+                  description: Waktu akhir session (ISO 8601)
+                  example: "2024-12-27T11:30:00.000Z"
+            examples:
+              complete_session:
+                summary: Menyelesaikan session
+                value:
+                  status: "completed"
+                  end_time: "2024-12-27T11:30:00.000Z"
+              cancel_session:
+                summary: Membatalkan session
+                value:
+                  status: "cancelled"
+                  end_time: "2024-12-27T10:45:00.000Z"
+              change_status_only:
+                summary: Update status saja
+                value:
+                  status: "completed"
+      responses:
+        "200":
+          description: Session berhasil diupdate
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Session berhasil diupdate"
+                  data:
+                    type: object
+                    properties:
+                      session_id:
+                        type: integer
+                        example: 1
+                      user_id:
+                        type: integer
+                        example: 1
+                      patient_id:
+                        type: integer
+                        example: 5
+                      start_time:
+                        type: string
+                        format: date-time
+                      end_time:
+                        type: string
+                        format: date-time
+                        nullable: true
+                      status:
+                        type: string
+              examples:
+                success:
+                  summary: Update berhasil
+                  value:
+                    success: true
+                    message: "Session berhasil diupdate"
+                    data:
+                      session_id: 1
+                      user_id: 1
+                      patient_id: 5
+                      start_time: "2024-12-27T10:00:00.000Z"
+                      end_time: "2024-12-27T11:30:00.000Z"
+                      status: "completed"
+        "400":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+              examples:
+                invalid_status:
+                  summary: Status tidak valid
+                  value:
+                    success: false
+                    message: "Status harus salah satu dari: ongoing, completed, cancelled"
+        "404":
+          description: Session tidak ditemukan atau tidak punya akses
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+              examples:
+                not_found:
+                  summary: Session tidak ditemukan
+                  value:
+                    success: false
+                    message: "Session tidak ditemukan"
+                no_access:
+                  summary: Tidak punya akses
+                  value:
+                    success: false
+                    message: "User tidak punya akses ke session ini"
+        "500":
+          description: Error server
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+
+  /reports/transcripts/{session_id}:
+    get:
+      tags: [Reports]
+      summary: Ambil transkrip session
+      description: >
+        Mengambil semua transkrip percakapan dalam session tertentu.
+        User hanya bisa mengakses transkrip session miliknya sendiri.
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          description: ID session konseling
+          schema:
+            type: integer
+          example: 1
+      responses:
+        "200":
+          description: Transkrip berhasil diambil
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    transcript_id:
+                      type: integer
+                      example: 1
+                    session_id:
+                      type: integer
+                      example: 1
+                    sender:
+                      type: string
+                      enum: [user, ai]
+                      example: "user"
+                    message:
+                      type: string
+                      example: "Saya merasa cemas belakangan ini"
+                    prosody_data:
+                      type: object
+                      nullable: true
+                      properties:
+                        pitch:
+                          type: number
+                        energy:
+                          type: number
+                        tempo:
+                          type: number
+                    timestamp:
+                      type: string
+                      format: date-time
+                      example: "2024-12-27T10:15:30.000Z"
+              examples:
+                success:
+                  summary: Transkrip percakapan
+                  value:
+                    - transcript_id: 1
+                      session_id: 1
+                      sender: "user"
+                      message: "Halo, saya ingin berbicara tentang masalah saya"
+                      prosody_data:
+                        pitch: 220.5
+                        energy: 0.75
+                        tempo: 1.2
+                      timestamp: "2024-12-27T10:15:30.000Z"
+                    - transcript_id: 2
+                      session_id: 1
+                      sender: "ai"
+                      message: "Halo, saya mendengarkan. Ceritakan apa yang sedang kamu rasakan"
+                      prosody_data: null
+                      timestamp: "2024-12-27T10:15:35.000Z"
+        "404":
+          description: Session tidak ditemukan atau tidak punya akses
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Sesi tidak ditemukan"
+        "500":
+          description: Error server
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+
+  /reports/evaluation/{session_id}:
+    get:
+      tags: [Reports]
+      summary: Ambil evaluasi session
+      description: >
+        Mengambil data evaluasi session. Jika belum ada evaluasi,
+        akan return data default dengan evaluated: false.
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          description: ID session konseling
+          schema:
+            type: integer
+          example: 1
+      responses:
+        "200":
+          description: Data evaluasi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  session_id:
+                    type: integer
+                    example: 1
+                  user_id:
+                    type: integer
+                    example: 1
+                  empathy_score:
+                    type: integer
+                    description: Skor empati 0-100
+                    example: 85
+                  question_score:
+                    type: integer
+                    description: Skor pertanyaan 0-100
+                    example: 78
+                  feedback_text:
+                    type: string
+                    nullable: true
+                    example: "Konselor menunjukkan empati yang baik"
+                  evaluated:
+                    type: boolean
+                    description: Status apakah sudah dievaluasi
+                    example: true
+                  created_at:
+                    type: string
+                    format: date-time
+              examples:
+                evaluated:
+                  summary: Session sudah dievaluasi
+                  value:
+                    session_id: 1
+                    user_id: 1
+                    empathy_score: 85
+                    question_score: 78
+                    feedback_text: "Konselor menunjukkan empati yang baik"
+                    evaluated: true
+                    created_at: "2024-12-27T11:00:00.000Z"
+                not_evaluated:
+                  summary: Session belum dievaluasi
+                  value:
+                    session_id: 1
+                    user_id: 1
+                    empathy_score: 0
+                    question_score: 0
+                    feedback_text: null
+                    evaluated: false
+        "404":
+          description: Session tidak ditemukan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Sesi tidak ditemukan"
+        "500":
+          description: Error server
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+
+    post:
+      tags: [Reports]
+      summary: Simpan evaluasi session
+      description: >
+        Menyimpan atau update evaluasi manual untuk session.
+        Skor empathy dan question harus antara 0-100.
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          description: ID session yang akan dievaluasi
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                empathy_score:
+                  type: integer
+                  minimum: 0
+                  maximum: 100
+                  description: Skor empati (0-100)
+                  example: 85
+                question_score:
+                  type: integer
+                  minimum: 0
+                  maximum: 100
+                  description: Skor pertanyaan (0-100)
+                  example: 78
+                feedback_text:
+                  type: string
+                  nullable: true
+                  description: Feedback text (opsional)
+                  example: "Konselor menunjukkan empati yang baik"
+            examples:
+              complete:
+                summary: Evaluasi lengkap
+                value:
+                  empathy_score: 85
+                  question_score: 78
+                  feedback_text: "Konselor menunjukkan empati yang baik"
+              minimal:
+                summary: Hanya scores
+                value:
+                  empathy_score: 80
+                  question_score: 75
+      responses:
+        "200":
+          description: Evaluasi berhasil disimpan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Evaluasi berhasil disimpan"
+                  data:
+                    type: object
+                    properties:
+                      session_id:
+                        type: integer
+                      empathy_score:
+                        type: integer
+                      question_score:
+                        type: integer
+                      feedback_text:
+                        type: string
+                        nullable: true
+              examples:
+                success:
+                  summary: Evaluasi tersimpan
+                  value:
+                    success: true
+                    message: "Evaluasi berhasil disimpan"
+                    data:
+                      session_id: 1
+                      empathy_score: 85
+                      question_score: 78
+                      feedback_text: "Konselor menunjukkan empati yang baik"
+        "400":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+              examples:
+                invalid_empathy:
+                  summary: Empathy score tidak valid
+                  value:
+                    error: "empathy_score harus antara 0-100"
+                invalid_question:
+                  summary: Question score tidak valid
+                  value:
+                    error: "question_score harus antara 0-100"
+        "404":
+          description: Session tidak ditemukan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Sesi tidak ditemukan"
+        "500":
+          description: Error server
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  error:
+                    type: string
+
+  /reports/{session_id}/analyze:
+    post:
+      tags: [Reports]
+      summary: Analisis otomatis sesi (AI + prosody)
+      description: >
+        Melakukan analisis otomatis session menggunakan AI dan data prosody.
+        Menghasilkan evaluasi otomatis beserta klasifikasi detail setiap pesan.
+        Session harus sudah selesai (status: finished) dan belum pernah dievaluasi.
+        Analisis menggunakan Python API eksternal untuk klasifikasi ML.
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          description: ID session yang akan dianalisis
+          schema:
+            type: integer
+          example: 1
+      responses:
+        "200":
+          description: Analisis berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Evaluasi berhasil disimpan"
+                  evaluation:
+                    type: object
+                    description: Data evaluasi yang tersimpan
+                    properties:
+                      session_id:
+                        type: integer
+                      empathy_score:
+                        type: integer
+                      question_score:
+                        type: integer
+                      feedback_text:
+                        type: string
+                        nullable: true
+                  classification_results:
+                    type: array
+                    description: Hasil klasifikasi per message
+                    items:
+                      type: object
+                      properties:
+                        transcript_id:
+                          type: integer
+                        message:
+                          type: string
+                        predicted_class:
+                          type: string
+                          description: Tipe pertanyaan (open/closed/reflection/etc)
+                        confidence:
+                          type: number
+                          description: Confidence score 0-1
+                  detailed_analysis:
+                    type: object
+                    properties:
+                      model_statistics:
+                        type: object
+                        description: Statistik dari ML model
+                        properties:
+                          open_questions:
+                            type: integer
+                          closed_questions:
+                            type: integer
+                          reflections:
+                            type: integer
+                      total_counselor_messages:
+                        type: integer
+                        description: Total pesan dari konselor
+                      prosody_analysis:
+                        type: object
+                        nullable: true
+                        description: Analisis prosody user
+                        properties:
+                          avg_pitch:
+                            type: number
+                          avg_energy:
+                            type: number
+                          avg_tempo:
+                            type: number
+                      python_api_used:
+                        type: string
+                        description: URL Python API yang digunakan
+              examples:
+                success:
+                  summary: Analisis berhasil
+                  value:
+                    success: true
+                    message: "Evaluasi berhasil disimpan"
+                    evaluation:
+                      session_id: 1
+                      empathy_score: 82
+                      question_score: 75
+                      feedback_text: "Analisis otomatis: Konselor menggunakan 5 pertanyaan terbuka"
+                    classification_results:
+                      - transcript_id: 2
+                        message: "Bagaimana perasaanmu saat ini?"
+                        predicted_class: "open_question"
+                        confidence: 0.95
+                      - transcript_id: 4
+                        message: "Apakah kamu merasa cemas?"
+                        predicted_class: "closed_question"
+                        confidence: 0.88
+                    detailed_analysis:
+                      model_statistics:
+                        open_questions: 5
+                        closed_questions: 2
+                        reflections: 3
+                      total_counselor_messages: 10
+                      prosody_analysis:
+                        avg_pitch: 225.3
+                        avg_energy: 0.68
+                        avg_tempo: 1.15
+                      python_api_used: "http://localhost:5000"
+        "400":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+              examples:
+                not_finished:
+                  summary: Session belum selesai
+                  value:
+                    success: false
+                    message: "Session belum selesai"
+                already_evaluated:
+                  summary: Sudah dievaluasi
+                  value:
+                    success: false
+                    message: "Session ini sudah pernah dievaluasi"
+                no_transcript:
+                  summary: Tidak ada transkrip
+                  value:
+                    success: false
+                    message: "Session tidak memiliki transkrip"
+        "404":
+          description: Session tidak ditemukan atau tidak punya akses
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+              examples:
+                not_found:
+                  summary: Session tidak ditemukan
+                  value:
+                    success: false
+                    message: "Session tidak ditemukan"
+                no_access:
+                  summary: Tidak punya akses
+                  value:
+                    success: false
+                    message: "User tidak punya akses ke session ini"
+        "500":
+          description: Error server
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                  details:
+                    type: string
+                    description: Stack trace (hanya di development mode)
+
+  /reports/stats:
+    get:
+      tags: [Reports]
+      summary: Statistik evaluasi user
+      description: >
+        Mengambil statistik rata-rata evaluasi untuk user yang sedang login.
+        Menghitung rata-rata empathy_score dan question_score dari semua
+        session yang sudah dievaluasi.
+      responses:
+        "200":
+          description: Statistik berhasil diambil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Statistik rata-rata berhasil diambil"
+                  data:
+                    type: object
+                    properties:
+                      total_evaluations:
+                        type: integer
+                        description: Total session yang sudah dievaluasi
+                        example: 10
+                      avg_empathy_score:
+                        type: number
+                        description: Rata-rata empathy score
+                        example: 82.5
+                      avg_question_score:
+                        type: number
+                        description: Rata-rata question score
+                        example: 76.3
+              examples:
+                with_data:
+                  summary: User sudah punya evaluasi
+                  value:
+                    success: true
+                    message: "Statistik rata-rata berhasil diambil"
+                    data:
+                      total_evaluations: 10
+                      avg_empathy_score: 82.5
+                      avg_question_score: 76.3
+                no_data:
+                  summary: Belum ada evaluasi
+                  value:
+                    success: true
+                    message: "Belum ada sesi yang dievaluasi"
+                    data:
+                      total_evaluations: 0
+                      avg_empathy_score: 0
+                      avg_question_score: 0
+        "404":
+          description: Session tidak ditemukan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Sesi tidak ditemukan"
+        "500":
+          description: Error server
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "Gagal mengambil data statistik: error message"
+
+  /reports/patient/{patient_id}:
+    get:
+      tags: [Reports]
+      summary: Statistik per pasien
+      description: >
+        Mengambil statistik lengkap untuk pasien tertentu, termasuk
+        total sessions, completed sessions, average scores, dan detail
+        setiap session dengan evaluasinya.
+      parameters:
+        - name: patient_id
+          in: path
+          required: true
+          description: ID pasien
+          schema:
+            type: integer
+          example: 5
+      responses:
+        "200":
+          description: Statistik pasien berhasil diambil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  patient_id:
+                    type: integer
+                    example: 5
+                  totalSessions:
+                    type: integer
+                    description: Total semua session
+                    example: 8
+                  completedSessions:
+                    type: integer
+                    description: Total session yang selesai
+                    example: 6
+                  evaluatedSessions:
+                    type: integer
+                    description: Total session yang sudah dievaluasi
+                    example: 5
+                  averageScores:
+                    type: object
+                    properties:
+                      empathy:
+                        type: integer
+                        example: 85
+                      question:
+                        type: integer
+                        example: 78
+                      ethics:
+                        type: integer
+                        example: 0
+                      overall:
+                        type: integer
+                        example: 54
+                  sessions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        session_id:
+                          type: integer
+                        start_time:
+                          type: string
+                          format: date-time
+                        end_time:
+                          type: string
+                          format: date-time
+                          nullable: true
+                        status:
+                          type: string
+                        hasEvaluation:
+                          type: boolean
+                        scores:
+                          type: object
+                          nullable: true
+                          properties:
+                            empathy_score:
+                              type: integer
+                            question_score:
+                              type: integer
+              examples:
+                success:
+                  summary: Statistik pasien
+                  value:
+                    patient_id: 5
+                    totalSessions: 8
+                    completedSessions: 6
+                    evaluatedSessions: 5
+                    averageScores:
+                      empathy: 85
+                      question: 78
+                      ethics: 0
+                      overall: 54
+                    sessions:
+                      - session_id: 1
+                        start_time: "2024-12-20T10:00:00.000Z"
+                        end_time: "2024-12-20T11:00:00.000Z"
+                        status: "finished"
+                        hasEvaluation: true
+                        scores:
+                          empathy_score: 85
+                          question_score: 80
+                      - session_id: 2
+                        start_time: "2024-12-21T14:00:00.000Z"
+                        end_time: null
+                        status: "ongoing"
+                        hasEvaluation: false
+                        scores: null
+        "500":
+          description: Error server
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+
+  /reports/user/me/statistics:
+    get:
+      tags: [Reports]
+      summary: Statistik lengkap user
+      description: >
+        Mengambil statistik lengkap untuk user yang sedang login,
+        termasuk total sessions, completed/ongoing sessions,
+        total hours, dan average scores dari semua evaluasi.
+      responses:
+        "200":
+          description: Statistik user berhasil diambil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalSessions:
+                    type: integer
+                    description: Total semua session user
+                    example: 15
+                  completedSessions:
+                    type: integer
+                    description: Total session yang selesai
+                    example: 12
+                  ongoingSessions:
+                    type: integer
+                    description: Total session yang masih berjalan
+                    example: 3
+                  evaluatedSessions:
+                    type: integer
+                    description: Total session yang sudah dievaluasi
+                    example: 10
+                  totalHours:
+                    type: number
+                    description: Total jam konseling
+                    example: 8.5
+                  averageScores:
+                    type: object
+                    properties:
+                      empathy:
+                        type: integer
+                        description: Rata-rata empathy score
+                        example: 83
+                      question:
+                        type: integer
+                        description: Rata-rata question score
+                        example: 77
+                      ethics:
+                        type: integer
+                        description: Rata-rata ethics score
+                        example: 0
+                      overall:
+                        type: integer
+                        description: Overall average score
+                        example: 53
+              examples:
+                success:
+                  summary: Statistik user lengkap
+                  value:
+                    totalSessions: 15
+                    completedSessions: 12
+                    ongoingSessions: 3
+                    evaluatedSessions: 10
+                    totalHours: 8.5
+                    averageScores:
+                      empathy: 83
+                      question: 77
+                      ethics: 0
+                      overall: 53
+        "500":
+          description: Error server
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
