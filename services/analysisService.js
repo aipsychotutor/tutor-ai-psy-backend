@@ -189,24 +189,26 @@ function analyzeProsodyRules(aggregateData) {
 // ============================================================================
 // HELPER: Generate Feedback with Gemini
 // ============================================================================
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function generateFeedbackWithGemini(
   transcripts,
   modelAnalysis,
-  prosodyAnalysis // Menerima hasil Rule-Based
+  prosodyAnalysis
 ) {
-  try {
-    const stats = modelAnalysis.statistics;
+  const MAX_RETRIES = 3; 
+  const RETRY_DELAY_MS = 2000; 
 
-    const conversationText = transcripts
-      .map(
-        (t) => `${t.message_role === "user" ? "Konselor" : "Pasien"}: ${t.message_text}`
-      )
-      .join("\n");
+  const stats = modelAnalysis.statistics;
 
-      let feedbackPrompt="";
-      
-    const commonPromptHeader = `
+  const conversationText = transcripts
+    .map(
+      (t) => `${t.message_role === "user" ? "Konselor" : "Pasien"}: ${t.message_text}`
+    )
+    .join("\n");
+
+  let feedbackPrompt = "";
+  const commonPromptHeader = `
 Anda adalah supervisor psikologi senior. Tugas Anda adalah memberikan feedback naratif berdasarkan data analisis yang sudah diolah.
 
 DATA PERFORMA TEKS (DARI AI):
@@ -217,8 +219,8 @@ TRANSKRIP SINGKAT:
 ${conversationText.slice(0, 1500)}... (dipotong agar efisien)
 `;
 
-  if(prosodyAnalysis.has_data){
-      feedbackPrompt = `
+  if (prosodyAnalysis.has_data) {
+    feedbackPrompt = `
 ${commonPromptHeader}
 
 DATA ANALISIS VOKAL/SUARA (HASIL RULE-BASED SYSTEM):
@@ -243,8 +245,7 @@ OUTPUT (JSON):
 }
 `;
   } else {
-    // Fallback tanpa audio
-      feedbackPrompt = `
+    feedbackPrompt = `
 ${commonPromptHeader}
 (Tidak ada data audio/vokal).
 
@@ -255,35 +256,57 @@ OUTPUT (JSON):
   "improvements": ["<Perbaikan 1>", "<Perbaikan 2>"]
 }
 `;
-    }
-  
-    const geminiData = await callGeminiAPI(feedbackPrompt);
-
-    // --- PARSING RESPONSE ---
-    let rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
-    rawText = rawText.replace(/```json|```/g, "").trim();
-    
-    // JSON Extraction Logic
-    const startIndex = rawText.indexOf('{');
-    const endIndex = rawText.lastIndexOf('}');
-    
-    if (startIndex === -1 || endIndex === -1) throw new Error("Invalid JSON structure");
-    
-    const feedback = JSON.parse(rawText.substring(startIndex, endIndex + 1));
-
-    return {
-      feedback_text: feedback.feedback_text,
-      strengths: Array.isArray(feedback.strengths) ? feedback.strengths : [],
-      improvements: Array.isArray(feedback.improvements) ? feedback.improvements : [],
-      empathy_score: stats.empathy_score, 
-      question_score: stats.question_score
-    };
-  } catch (error) {
-    console.error("❌ Gemini feedback error:", error.message);
-    return generateFallbackFeedback(modelAnalysis.statistics);
   }
-}
 
+  // --- RETRY LOOP START ---
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      console.log(`🤖 Gemini Attempt ${attempt}/${MAX_RETRIES}...`);
+      
+      const geminiData = await callGeminiAPI(feedbackPrompt);
+
+      // --- PARSING RESPONSE ---
+      let rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+      rawText = rawText.replace(/```json|```/g, "").trim();
+
+      // JSON Extraction Logic
+      const startIndex = rawText.indexOf('{');
+      const endIndex = rawText.lastIndexOf('}');
+
+      if (startIndex === -1 || endIndex === -1) {
+        throw new Error("Invalid JSON structure received from Gemini");
+      }
+
+      const feedback = JSON.parse(rawText.substring(startIndex, endIndex + 1));
+
+      // Validasi sederhana isi JSON agar tidak kosong
+      if (!feedback.feedback_text) throw new Error("JSON missing feedback_text");
+
+      console.log("✅ Gemini feedback generated successfully.");
+      
+      return {
+        feedback_text: feedback.feedback_text,
+        strengths: Array.isArray(feedback.strengths) ? feedback.strengths : [],
+        improvements: Array.isArray(feedback.improvements) ? feedback.improvements : [],
+        empathy_score: stats.empathy_score,
+        question_score: stats.question_score
+      };
+
+    } catch (error) {
+      console.error(`❌ Gemini Attempt ${attempt} failed:`, error.message);
+
+      if (attempt === MAX_RETRIES) {
+        console.error("⚠️ All retry attempts failed. Switching to fallback.");
+      } else {
+        await wait(RETRY_DELAY_MS);
+      }
+    }
+  }
+  // --- RETRY LOOP END ---
+
+  // Jika semua loop gagal, jalankan fallback
+  return generateFallbackFeedback(modelAnalysis.statistics);
+}
 // ============================================================================
 // STATISTICS & FALLBACK HELPERS 
 // ============================================================================
