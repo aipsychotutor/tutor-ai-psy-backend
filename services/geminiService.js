@@ -168,7 +168,7 @@ export async function callGeminiAPI(prompt) {
     // 🛡️ FAILOVER: MODEL PRO (Prioritas Stabilitas)
     const timeWasted = Date.now() - startTime;
     console.warn(`⚠️ [GEMINI] Flash Failed/Timeout (${timeWasted}ms).`);
-    console.warn(`   Reason 1: ${err.message}`); // <--- Log alasan Flash gagal
+    console.warn(`   Reason 1: ${err.message}`);
     console.log(`🛡️ [GEMINI] Instant Switch to: ${MODEL_STABLE}...`);
 
     try {
@@ -176,7 +176,6 @@ export async function callGeminiAPI(prompt) {
       console.log(`✅ [GEMINI] Pro rescued the chat!`);
       
     } catch (errPro) {
-      // ❌ JIKA KEDUANYA GAGAL
       console.error("\n🔥 [GEMINI] CRITICAL FAILURE: Both models failed.");
       
       // 1. Log Error Flash 
