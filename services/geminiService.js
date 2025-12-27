@@ -155,7 +155,7 @@ export async function callGeminiAPI(prompt) {
   try {
     // 🏎️ USAHA 1: MODEL FLASH (Prioritas Kecepatan)
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); 
+    const timeoutId = setTimeout(() => controller.abort(), 30000); 
 
     console.log(`🤖 [GEMINI] Attempt 1: ${MODEL_FAST} (Speed Mode)`);
     
