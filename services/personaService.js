@@ -110,7 +110,6 @@ export async function getPersonaForSession(session_id) {
 }
 
 export async function setPersonaFromPatient(patient_id) {
-  console.log("📋 Fetching patient data for persona:", patient_id);
 
   const { data: patient, error } = await supabase
     .from("patients")
@@ -124,9 +123,6 @@ export async function setPersonaFromPatient(patient_id) {
 
   const newPersona = buildPersonaFromPatient(patient);
   activePersona = newPersona;
-
-  console.log("✅ Persona berhasil diset dari patient:", patient.patient_name);
-
   return {
     activePersona: activePersona,
     patient_id: patient_id,

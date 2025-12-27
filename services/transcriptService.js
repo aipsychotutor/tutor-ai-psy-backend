@@ -2,7 +2,6 @@ import { supabase } from "../supabase.js";
 
 // ========== SERVICE METHODS ==========
 export async function saveTranscripts(session_id, userMessage, messages, prosody_data = null) {
-  console.log("\n💾 [DATABASE] Saving transcripts to Supabase...");
   
   const transcriptsToInsert = [
     { 
@@ -18,12 +17,6 @@ export async function saveTranscripts(session_id, userMessage, messages, prosody
     })),
   ];
 
-  console.log(
-    "📝 [DATABASE] Inserting",
-    transcriptsToInsert.length,
-    "records"
-  );
-  console.log("   Records:", JSON.stringify(transcriptsToInsert, null, 2));
 
   const { data, error } = await supabase
     .from("session_transcripts")
@@ -34,10 +27,6 @@ export async function saveTranscripts(session_id, userMessage, messages, prosody
     throw error;
   }
 
-  console.log("✅ [DATABASE] Transcripts saved successfully");
-  if (data) {
-    console.log("   Inserted data:", JSON.stringify(data, null, 2));
-  }
 
   return data;
 }

@@ -20,11 +20,6 @@ export async function processChatMessage(userMessage, session_id, prosody_data =
   // ⏱️ START TIMER GLOBAL
   const startTimeGlobal = Date.now();
   
-  console.log("\n" + "=".repeat(70));
-  console.log("🚀 [CHAT] Processing chat message");
-  console.log("=".repeat(70));
-  console.log("📥 [INPUT] User Message:", userMessage);
-  console.log("📥 [INPUT] Session ID:", session_id);
 
   // ========== 1. GET PERSONA ==========
   const t0 = Date.now();
@@ -38,13 +33,12 @@ export async function processChatMessage(userMessage, session_id, prosody_data =
   const rawKnowledge = [persona.biodata, persona.latar_belakang_cerita, persona.kepribadian].filter(Boolean).join("\n\n");
 
   // ============================================================
-  // 🔥 HYBRID RAG LOGIC
+  // HYBRID RAG LOGIC
   // ============================================================
   const t1 = Date.now(); // Start Timer RAG
   
   if (hasPrecomputedData) {
     // --- FAST RAG ---
-    console.log(`\n⚡ [RAG - FAST] Found ${persona.knowledge_base.length} pre-computed vectors.`);
     
     const queryVector = await getEmbedding(userMessage);
 
@@ -56,11 +50,6 @@ export async function processChatMessage(userMessage, session_id, prosody_data =
 
       scored.sort((a, b) => b.score - a.score);
       const topResults = scored.slice(0, 3);
-      
-      // Debug Score
-      console.log("   🏆 Top Matches:");
-      topResults.forEach(r => console.log(`   - [${r.score.toFixed(4)}] ${r.text.substring(0, 40)}...`));
-
       relevantContext = topResults.map(s => s.text).join("\n");
     }
 
@@ -91,8 +80,6 @@ export async function processChatMessage(userMessage, session_id, prosody_data =
     `
   };
 
-  // ========== 2. BUILD PROMPT ==========
-  console.log("\n🔨 [PROMPT] Building prompt...");
   const prompt = buildPrompt(ragPersona, userMessage);
 
   // ========== 3. CALL GEMINI API (LLM) ==========
@@ -125,7 +112,6 @@ export async function processChatMessage(userMessage, session_id, prosody_data =
   console.log(`🧠 RAG Process   : ${durationRAG} ms  ${hasPrecomputedData ? "(⚡ Fast Mode)" : "(🐢 Slow Mode)"}`);
   console.log(`🤖 Gemini (LLM)  : ${durationLLM} ms`);
   console.log(`🔊 TTS & Audio   : ${durationTTS} ms`);
-  console.log(`💾 Database Save : ${durationDB} ms`);
   console.log("-".repeat(50));
   console.log(`🚀 TOTAL TIME    : ${totalDuration} ms (${(totalDuration/1000).toFixed(2)} seconds)`);
   console.log("=".repeat(50) + "\n");

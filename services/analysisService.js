@@ -63,10 +63,6 @@ async function analyzeWithDualModels(transcripts) {
       .filter((m) => !m.isQuestion)
       .map((m) => m.text);
 
-    console.log(
-      `📊 Analyzing ${counselorMessages.length} counselor messages...`
-    );
-
     let allResults = [];
 
     // 1. Analyze questions with BOTH models
@@ -191,7 +187,7 @@ function analyzeProsodyRules(aggregateData) {
 }
 
 // ============================================================================
-// HELPER: Generate Feedback with Gemini (UPDATED)
+// HELPER: Generate Feedback with Gemini
 // ============================================================================
 
 async function generateFeedbackWithGemini(
@@ -221,11 +217,8 @@ TRANSKRIP SINGKAT:
 ${conversationText.slice(0, 1500)}... (dipotong agar efisien)
 `;
 
-  // LOGIKA BARU: Menyertakan hasil Rule-Based ke Prompt
   if(prosodyAnalysis.has_data){
-     console.log("🎙️ Generating feedback WITH Rule-Based Prosody insights...");
-     
-     feedbackPrompt = `
+      feedbackPrompt = `
 ${commonPromptHeader}
 
 DATA ANALISIS VOKAL/SUARA (HASIL RULE-BASED SYSTEM):
@@ -251,7 +244,6 @@ OUTPUT (JSON):
 `;
   } else {
     // Fallback tanpa audio
-    console.log("📝 Generating feedback WITHOUT vocal analysis...");
       feedbackPrompt = `
 ${commonPromptHeader}
 (Tidak ada data audio/vokal).
@@ -283,7 +275,6 @@ OUTPUT (JSON):
       feedback_text: feedback.feedback_text,
       strengths: Array.isArray(feedback.strengths) ? feedback.strengths : [],
       improvements: Array.isArray(feedback.improvements) ? feedback.improvements : [],
-      // Pass skor dari rule-based jika diperlukan di frontend, atau gunakan skor text
       empathy_score: stats.empathy_score, 
       question_score: stats.question_score
     };
@@ -294,7 +285,7 @@ OUTPUT (JSON):
 }
 
 // ============================================================================
-// STATISTICS & FALLBACK HELPERS (Tetap Sama)
+// STATISTICS & FALLBACK HELPERS 
 // ============================================================================
 
 function calculateModelStatistics(results, totalMessages, totalQuestions, totalStatements) {
@@ -362,9 +353,6 @@ function generateFallbackFeedback(stats) {
 // ============================================================================
 
 export async function analyzeSession(sessionId, userId) {
-    console.log(`\n${"=".repeat(70)}`);
-    console.log(`📊 Starting comprehensive analysis for session: ${sessionId}`);
-    
     // 1. Validation & Data Fetching
     const session = await SessionModel.getSessionById(sessionId, userId); 
     if (session.status !== "completed") throw new Error("Session belum selesai");
@@ -376,11 +364,9 @@ export async function analyzeSession(sessionId, userId) {
     if (!transcripts || transcripts.length === 0) throw new Error("Tidak ada transkrip");
 
     // 2. Text Analysis (Python ML)
-    console.log("\n🤖 Step 1: Analyzing Text with AI models...");
     const modelAnalysis = await analyzeWithDualModels(transcripts);
 
     // 3. Prosody Aggregation & RULE BASED ANALYSIS
-    console.log("\n🎵 Step 2: Analyzing Prosody (Rule-Based)...");
     const userMessages = transcripts.filter(t => t.message_role === 'user');
     const validProsodyData = userMessages.map(msg => msg.prosody_data).filter(data => data != null); 
 
@@ -403,10 +389,8 @@ export async function analyzeSession(sessionId, userId) {
 
     // --- CALL RULE BASED SYSTEM HERE ---
     const prosodyAnalysisResult = analyzeProsodyRules(aggregateProsody);
-    console.log("✅ Prosody Rule-Based Result:", prosodyAnalysisResult.raw_summary);
     
     // 4. Generate Feedback (Gemini as Writer)
-    console.log("\n💬 Step 3: Generating feedback with Gemini...");
     const geminiFeedback = await generateFeedbackWithGemini(
       transcripts,
       modelAnalysis,
@@ -428,10 +412,7 @@ export async function analyzeSession(sessionId, userId) {
         prosody_summary: prosodyAnalysisResult
     };
     
-    console.log("\n💾 Step 4: Saving evaluation...");
     const evaluation = await SessionEvaluationModel.saveSessionEvaluation(finalEvaluationData);
-
-    console.log("✅ Analysis completed successfully!");
     
     return {
         evaluation: evaluation,

@@ -201,21 +201,15 @@ export async function callGeminiAPI(prompt) {
 }
 
 export function parseGeminiResponse(geminiData) {
-  console.log("\n🔍 [PARSE] Extracting text from Gemini response...");
   let rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
-  console.log("📄 [PARSE] Raw text before cleaning:");
-  console.log("   ", rawText.substring(0, 300));
 
   rawText = rawText.replace(/```json|```/g, "").trim();
-  
-  console.log("📄 [PARSE] Cleaned text:");
-  console.log("   ", rawText.substring(0, 300));
+
 
   let messages =[];
   try {
     const parsedData = JSON.parse(rawText);
 
-    // 🔥 CEK TIPE DATA: Apakah Array atau Object?
     if (Array.isArray(parsedData)) {
       // Jika Array, langsung pakai
       messages = parsedData;
@@ -248,14 +242,12 @@ export function parseGeminiResponse(geminiData) {
 }
 
 export function validateMessages(messages) {
-  console.log("\n✔️ [VALIDATE] Validating expressions and animations...");
   
   if (!Array.isArray(messages)) {
     console.error("❌ [VALIDATE] Input is not an array! Returning empty.");
     return [];
   }
   const validatedMessages = messages.map((m, idx) => validateMessage(m, idx));
-  console.log("✅ [VALIDATE] All messages validated");
   return validatedMessages;
 }
 
@@ -263,7 +255,6 @@ export function validateMessages(messages) {
 export async function getEmbedding(text) {
   // Truncate text for logging biar terminal gak penuh 
   const shortText = text.length > 40 ? text.substring(0, 40) + "..." : text;
-  // console.log(`   🔌 [EMBEDDING] Requesting vector for: "${shortText}"`);
 
   const EMBEDDING_URL = "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent";
   
@@ -313,12 +304,6 @@ function cosineSimilarity(vecA, vecB) {
 // userQuery: Pertanyaan user (String)
 // contextList: Array of Strings ["Pasien sakit X", "Riwayat Y"] atau Objects
 export async function findRelevantContext(userQuery, contextList, topK = 3) {
-  console.log("\n" + "=".repeat(60));
-  console.log("🧠 [RAG START] Searching Knowledge Base");
-  console.log(`❓ User Query: "${userQuery}"`);
-  console.log(`📚 Total Candidates: ${contextList.length} items`);
-  console.log("-".repeat(60));
-
   // a. Vectorkan pertanyaan user
   console.log("⏳ [RAG] Vectorizing User Query...");
   const queryVector = await getEmbedding(userQuery);
@@ -326,9 +311,6 @@ export async function findRelevantContext(userQuery, contextList, topK = 3) {
     console.log("❌ [RAG] Failed to vectorize query. Returning empty context.");
     return "";
   }
-  // b. Hitung skor untuk setiap potongan data (Fakta)
-  // NOTE: Idealnya contextList sudah punya vector di database biar cepat.
-  // Tapi untuk sekarang kita generate on-the-fly.
 
   console.log("⏳ [RAG] Comparing against Knowledge Base...");
   const scoredContexts = await Promise.all(
@@ -354,13 +336,6 @@ export async function findRelevantContext(userQuery, contextList, topK = 3) {
 
   // d. Ambil top K (misal: 3 fakta teratas)
   const topResults = scoredContexts.slice(0, topK);
-
-  console.log("-".repeat(60));
-  console.log(`🏆 [RAG WINNERS] Top ${topK} Most Relevant Contexts:`);
-  topResults.forEach((r, i) => {
-    console.log(`   ${i+1}. [Score: ${r.score.toFixed(4)}] "${r.text.substring(0, 100)}..."`);
-  });
-  console.log("=".repeat(60) + "\n");
 
   return topResults.map(r => r.text).join("\n");
 }
