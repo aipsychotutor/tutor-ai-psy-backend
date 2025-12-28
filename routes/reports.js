@@ -1,9 +1,10 @@
 import express from "express";
 
-import PatientModel from "../models/patientModel.js"; 
+import PatientModel from "../models/patientModel.js";
 import SessionModel from "../models/sessionModel.js";
 import SessionTranscriptModel from "../models/sessionTranscriptModel.js";
 import SessionEvaluationModel from "../models/sessionEvaluationModel.js";
+import SessionFaceEvaluationModel from "../models/sessionFaceEvaluationModel.js";
 
 import { analyzeSession, PYTHON_API_URL } from "../services/analysisService.js";
 
@@ -16,12 +17,14 @@ router.get("/transcripts/:session_id", async (req, res) => {
 
     await SessionModel.checkSessionAccess(session_id, user_id);
 
-    const data = await SessionTranscriptModel.getTranscriptsBySessionId(session_id);
+    const data = await SessionTranscriptModel.getTranscriptsBySessionId(
+      session_id
+    );
 
     res.json(data);
   } catch (err) {
     if (err.message.includes("Sesi tidak ditemukan")) {
-        return res.status(404).json({ message: err.message });
+      return res.status(404).json({ message: err.message });
     }
     res.status(500).json({ error: err.message });
   }
@@ -34,7 +37,13 @@ router.get("/evaluation/:session_id", async (req, res) => {
 
     await SessionModel.checkSessionAccess(session_id, user_id);
 
-    const data = await SessionEvaluationModel.getEvaluationBySessionId(session_id);
+    const data = await SessionEvaluationModel.getEvaluationBySessionId(
+      session_id
+    );
+    const expression_data =
+      await SessionFaceEvaluationModel.getFaceEvaluationsBySessionId(
+        session_id
+      );
 
     if (!data) {
       return res.json({
@@ -44,13 +53,18 @@ router.get("/evaluation/:session_id", async (req, res) => {
         question_score: 0,
         feedback_text: null,
         evaluated: false,
+        expression_data: null,
       });
     }
 
-    res.json({ ...data, evaluated: true });
+    res.json({
+      ...data,
+      evaluated: true,
+      expression_data: expression_data[0].expression,
+    });
   } catch (err) {
     if (err.message.includes("Sesi tidak ditemukan")) {
-        return res.status(404).json({ message: err.message });
+      return res.status(404).json({ message: err.message });
     }
     res.status(500).json({ error: err.message });
   }
@@ -60,8 +74,7 @@ router.post("/evaluation/:session_id", async (req, res) => {
   try {
     const { session_id } = req.params;
     const user_id = req.user.user_id;
-    const { empathy_score, question_score, feedback_text } =
-      req.body;
+    const { empathy_score, question_score, feedback_text } = req.body;
 
     await SessionModel.checkSessionAccess(session_id, user_id);
 
@@ -79,10 +92,10 @@ router.post("/evaluation/:session_id", async (req, res) => {
 
     // Cek apakah sudah ada
     const result = await SessionEvaluationModel.saveSessionEvaluation({
-        session_id: session_id,
-        empathy_score: empathy_score || 0,
-        question_score: question_score || 0,
-        feedback_text: feedback_text || null,
+      session_id: session_id,
+      empathy_score: empathy_score || 0,
+      question_score: question_score || 0,
+      feedback_text: feedback_text || null,
     });
 
     res.json({
@@ -92,7 +105,7 @@ router.post("/evaluation/:session_id", async (req, res) => {
     });
   } catch (err) {
     if (err.message.includes("Sesi tidak ditemukan")) {
-        return res.status(404).json({ message: err.message });
+      return res.status(404).json({ message: err.message });
     }
     res.status(500).json({ success: false, error: err.message });
   }
@@ -105,7 +118,10 @@ router.get("/patient/:patient_id", async (req, res) => {
 
     await PatientModel.getPatientById(patient_id, user_id, req.user.role);
 
-    const sessions = await SessionModel.getSessionsByPatientIdWithEvaluation(patient_id, user_id);
+    const sessions = await SessionModel.getSessionsByPatientIdWithEvaluation(
+      patient_id,
+      user_id
+    );
 
     const totalSessions = sessions.length;
     const completedSessions = sessions.filter(
@@ -167,7 +183,9 @@ router.get("/user/me/statistics", async (req, res) => {
   try {
     const user_id = req.user.user_id;
 
-    const sessions = await SessionModel.getSessionsWithEvaluationsByUserId(user_id);
+    const sessions = await SessionModel.getSessionsWithEvaluationsByUserId(
+      user_id
+    );
 
     const stats = {
       totalSessions: sessions.length,
@@ -226,35 +244,37 @@ router.get("/user/me/statistics", async (req, res) => {
 router.get("/stats", async (req, res) => {
   try {
     const user_id = req.user.user_id;
-    const evaluations = await SessionEvaluationModel.getEvaluationsByUserId(user_id);
+    const evaluations = await SessionEvaluationModel.getEvaluationsByUserId(
+      user_id
+    );
     const evaluatedSessions = evaluations;
     const totalEvaluations = evaluations.length;
 
     if (totalEvaluations === 0) {
-        // ... (return 0)
-        return res.json({
-            success: true,
-            message: "Belum ada sesi yang dievaluasi",
-            data: {
-              total_evaluations: 0,
-              avg_empathy_score: 0,
-              avg_question_score: 0,
-            }
-          });
+      // ... (return 0)
+      return res.json({
+        success: true,
+        message: "Belum ada sesi yang dievaluasi",
+        data: {
+          total_evaluations: 0,
+          avg_empathy_score: 0,
+          avg_question_score: 0,
+        },
+      });
     }
 
-     // Hitung total skor 
-     const sumScores = evaluatedSessions.reduce(
-        (acc, evalData) => {
-            const empathy = Number(evalData.empathy_score ?? 0);
-            const question = Number(evalData.question_score ?? 0);
+    // Hitung total skor
+    const sumScores = evaluatedSessions.reduce(
+      (acc, evalData) => {
+        const empathy = Number(evalData.empathy_score ?? 0);
+        const question = Number(evalData.question_score ?? 0);
 
-            acc.totalEmpathy += empathy;
-            acc.totalQuestion += question;
+        acc.totalEmpathy += empathy;
+        acc.totalQuestion += question;
 
-            return acc;
-        },
-        { totalEmpathy: 0, totalQuestion: 0 }
+        return acc;
+      },
+      { totalEmpathy: 0, totalQuestion: 0 }
     );
 
     const avg_empathy_score = sumScores.totalEmpathy / totalEvaluations;
@@ -272,10 +292,9 @@ router.get("/stats", async (req, res) => {
         avg_question_score: final_avg_question,
       },
     });
-
   } catch (error) {
     if (error.message.includes("Sesi tidak ditemukan")) {
-        return res.status(404).json({ message: error.message });
+      return res.status(404).json({ message: error.message });
     }
     res.status(500).json({
       success: false,
@@ -304,11 +323,18 @@ router.post("/:session_id/analyze", async (req, res) => {
       },
     });
   } catch (err) {
-    if (err.message.includes("Session belum selesai") || err.message.includes("sudah pernah dievaluasi") || err.message.includes("transkrip")) {
-        return res.status(400).json({ success: false, message: err.message });
+    if (
+      err.message.includes("Session belum selesai") ||
+      err.message.includes("sudah pernah dievaluasi") ||
+      err.message.includes("transkrip")
+    ) {
+      return res.status(400).json({ success: false, message: err.message });
     }
-    if (err.message.includes("tidak ditemukan") || err.message.includes("tidak punya akses")) {
-        return res.status(404).json({ success: false, message: err.message });
+    if (
+      err.message.includes("tidak ditemukan") ||
+      err.message.includes("tidak punya akses")
+    ) {
+      return res.status(404).json({ success: false, message: err.message });
     }
     res.status(500).json({
       success: false,

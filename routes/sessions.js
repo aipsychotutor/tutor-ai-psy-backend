@@ -1,6 +1,7 @@
 import express from "express";
 import SessionModel from "../models/sessionModel.js";
 import PatientModel from "../models/patientModel.js";
+import SessionFaceEvaluationModel from "../models/sessionFaceEvaluationModel.js";
 
 const router = express.Router();
 
@@ -99,7 +100,7 @@ router.patch("/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const user_id = req.user.user_id;
-    const { status, end_time } = req.body;
+    const { status, end_time, expression_data } = req.body;
 
     const validStatuses = ["ongoing", "completed", "cancelled"];
     if (status && !validStatuses.includes(status)) {
@@ -113,6 +114,11 @@ router.patch("/:id", async (req, res) => {
     if (status) updateData.status = status;
     if (end_time) updateData.end_time = end_time;
 
+    const postExpressionData =
+      await SessionFaceEvaluationModel.createNewFaceEvaluation(
+        id,
+        expression_data || {}
+      );
     const updatedSession = await SessionModel.updateSession(
       id,
       user_id,
@@ -123,6 +129,7 @@ router.patch("/:id", async (req, res) => {
       success: true,
       message: "Session berhasil diupdate",
       data: updatedSession,
+      expression_data: postExpressionData,
     });
   } catch (error) {
     if (
