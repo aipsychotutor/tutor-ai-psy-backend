@@ -78,7 +78,7 @@ function buildPersonaFromPatient(patient) {
     kepribadian: Array.isArray(patient.personality_traits)
       ? patient.personality_traits.map((t) => `- ${t}`).join("\n")
       : "- Tidak terdefinisi",
-      knowledge_base: patient.knowledge_base || []
+    knowledge_base: patient.knowledge_base || [],
   };
 }
 
@@ -101,7 +101,8 @@ export async function getPersonaForSession(session_id) {
         marital_status,
         background_story,
         personality_traits,
-        knowledge_base
+        knowledge_base,
+        symptom_intensity
       )
     `
     )
