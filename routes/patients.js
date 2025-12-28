@@ -158,10 +158,10 @@ router.put("/:id", async (req, res) => {
     } = req.body;
 
     // Validasi Input Dasar
-    if (!patient_name || !background_story) {
-      return res.status(400).json({
+    if (!patient_name || !background_story || !personality_type || !symptom_intensity || !age || !gender || !occupation || !marital_status) {
+      return res.status(400).json({     
         status: "error",
-        message: "Nama dan latar belakang wajib diisi.",
+        message: "Semua field kecuali personality_traits wajib diisi.",
       });
     }
 
@@ -277,12 +277,13 @@ router.post("/", async (req, res) => {
     } = req.body;
 
     // --- VALIDASI ---
-    if (!patient_name || !background_story) {
-      return res.status(400).json({
+    if (!patient_name || !background_story || !personality_type || !symptom_intensity || !age || !gender || !occupation || !marital_status) {
+      return res.status(400).json({     
         status: "error",
-        message: "patient_name dan background_story harus diisi",
+        message: "Semua field kecuali personality_traits wajib diisi.",
       });
     }
+    
     if (
       symptom_intensity &&
       (symptom_intensity < 1 || symptom_intensity > 10)

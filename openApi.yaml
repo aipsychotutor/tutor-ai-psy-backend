@@ -937,310 +937,347 @@ paths:
                     example: "Patient tidak ditemukan"
 
   /patients:
-    get:
-      tags: [Patients]
-      summary: Ambil semua pasien
-      description: >
-        Mengambil daftar pasien berdasarkan user yang login. 
-        User biasa hanya bisa melihat pasien miliknya sendiri dan pasien global.
-        Admin bisa melihat semua pasien.
-      responses:
-        "200":
-          description: Daftar pasien berhasil diambil
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    patient_id:
-                      type: integer
-                      example: 1
-                    patient_name:
-                      type: string
-                      example: "Budi Santoso"
-                    personality_traits:
-                      type: object
-                      nullable: true
-                      example: { "anxiety_level": "high", "openness": "medium" }
-                    avatar_path:
-                      type: string
-                      example: "/models/default.glb"
-                    created_at:
-                      type: string
-                      format: date-time
-                      example: "2024-12-27T10:00:00.000Z"
-                    is_active:
-                      type: boolean
-                      example: true
-                    is_global:
-                      type: boolean
-                      example: false
-                    user_id:
-                      type: integer
-                      example: 1
-              examples:
-                success:
-                  summary: Daftar pasien
-                  value:
-                    - patient_id: 1
-                      patient_name: "Budi Santoso"
-                      personality_traits: { "anxiety_level": "high" }
-                      avatar_path: "/models/default.glb"
-                      created_at: "2024-12-27T10:00:00.000Z"
-                      is_active: true
-                      is_global: false
-                      user_id: 1
-                    - patient_id: 2
-                      patient_name: "Siti Aminah"
-                      personality_traits: { "depression_level": "medium" }
-                      avatar_path: "/models/default.glb"
-                      created_at: "2024-12-26T09:00:00.000Z"
-                      is_active: true
-                      is_global: true
-                      user_id: 2
-        "500":
-          description: Error server
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: error
-                  message:
-                    type: string
-
-    post:
-      tags: [Patients]
-      summary: Tambah pasien baru
-      description: >
-        Membuat pasien baru dengan data lengkap. Sistem akan otomatis 
-        generate embeddings (RAG) dari data pasien untuk meningkatkan 
-        akurasi response AI. Jika embedding gagal, pasien tetap dibuat 
-        tanpa RAG data.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [patient_name, background_story]
-              properties:
-                patient_name:
-                  type: string
-                  description: Nama lengkap pasien
-                  example: "Budi Santoso"
-                background_story:
-                  type: string
-                  description: Latar belakang dan riwayat pasien
-                  example: "Mahasiswa semester 6 yang mengalami anxiety sejak pandemi..."
-                personality_type:
-                  type: string
-                  nullable: true
-                  description: Tipe kepribadian (opsional)
-                  example: "introvert"
-                symptom_intensity:
-                  type: integer
-                  minimum: 1
-                  maximum: 10
-                  nullable: true
-                  description: Intensitas gejala 1-10 (opsional)
-                  example: 7
-                age:
-                  type: integer
-                  nullable: true
-                  description: Usia pasien (harus positif)
-                  example: 22
-                gender:
-                  type: string
-                  nullable: true
-                  description: Jenis kelamin
-                  example: "Laki-laki"
-                occupation:
-                  type: string
-                  nullable: true
-                  description: Pekerjaan/profesi
-                  example: "Mahasiswa"
-                marital_status:
-                  type: string
-                  nullable: true
-                  description: Status pernikahan
-                  example: "Belum Menikah"
-                personality_traits:
-                  type: object
-                  nullable: true
-                  description: Traits kepribadian dalam bentuk key-value
-                  example: { "anxiety_level": "high", "social_comfort": "low" }
-                is_global:
-                  type: boolean
-                  nullable: true
-                  description: Apakah pasien bisa diakses semua user
-                  example: false
-                  default: false
-            examples:
-              complete:
-                summary: Data lengkap
-                value:
-                  patient_name: "Budi Santoso"
-                  background_story: "Mahasiswa yang mengalami anxiety disorder"
-                  personality_type: "introvert"
-                  symptom_intensity: 7
-                  age: 22
-                  gender: "Laki-laki"
-                  occupation: "Mahasiswa"
-                  marital_status: "Belum Menikah"
-                  personality_traits:
-                    anxiety_level: "high"
-                    social_comfort: "low"
-                    openness: "medium"
-                  is_global: false
-              minimal:
-                summary: Data minimal (required only)
-                value:
-                  patient_name: "Siti Aminah"
-                  background_story: "Pasien dengan riwayat depresi ringan"
-      responses:
-        "201":
-          description: Pasien berhasil ditambahkan
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  message:
-                    type: string
-                    example: "Pasien berhasil ditambahkan"
-                  data:
+      get:
+        tags: [Patients]
+        summary: Ambil semua pasien
+        description: >
+          Mengambil daftar pasien berdasarkan user yang login. 
+          User biasa hanya bisa melihat pasien miliknya sendiri dan pasien global.
+          Admin bisa melihat semua pasien.
+        responses:
+          "200":
+            description: Daftar pasien berhasil diambil
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
                     type: object
                     properties:
                       patient_id:
                         type: integer
                         example: 1
-                      user_id:
-                        type: integer
-                        example: 1
                       patient_name:
                         type: string
                         example: "Budi Santoso"
-                      background_story:
-                        type: string
-                      personality_type:
-                        type: string
-                        nullable: true
-                      symptom_intensity:
-                        type: integer
-                        nullable: true
                       age:
                         type: integer
-                        nullable: true
+                        example: 22
                       gender:
                         type: string
-                        nullable: true
-                      occupation:
-                        type: string
-                        nullable: true
+                        example: "Laki-laki"
                       marital_status:
                         type: string
-                        nullable: true
+                        example: "Belum Menikah"
+                      occupation:
+                        type: string
+                        example: "Mahasiswa"
+                      background_story:
+                        type: string
+                        example: "Mahasiswa yang mengalami anxiety"
+                      personality_type:
+                        type: string
+                        example: "introvert"
+                      symptom_intensity:
+                        type: integer
+                        example: 7
                       personality_traits:
                         type: object
                         nullable: true
+                        example: { "anxiety_level": "high", "openness": "medium" }
                       avatar_path:
                         type: string
                         example: "/models/default.glb"
+                      created_at:
+                        type: string
+                        format: date-time
+                        example: "2024-12-27T10:00:00.000Z"
                       is_active:
                         type: boolean
                         example: true
                       is_global:
                         type: boolean
                         example: false
-                      knowledge_base:
-                        type: array
-                        nullable: true
-                        description: RAG embeddings (jika berhasil generate)
-                        items:
-                          type: object
-                          properties:
-                            text:
-                              type: string
-                            vector:
-                              type: array
-                              items:
-                                type: number
+                      user_id:
+                        type: integer
+                        example: 1
+                examples:
+                  success:
+                    summary: Daftar pasien
+                    value:
+                      - patient_id: 1
+                        patient_name: "Budi Santoso"
+                        age: 22
+                        gender: "Laki-laki"
+                        marital_status: "Belum Menikah"
+                        occupation: "Mahasiswa"
+                        background_story: "Mahasiswa yang mengalami anxiety"
+                        personality_type: "introvert"
+                        symptom_intensity: 7
+                        personality_traits: { "anxiety_level": "high" }
+                        avatar_path: "/models/default.glb"
+                        created_at: "2024-12-27T10:00:00.000Z"
+                        is_active: true
+                        is_global: false
+                        user_id: 1
+                      - patient_id: 2
+                        patient_name: "Siti Aminah"
+                        age: 28
+                        gender: "Perempuan"
+                        marital_status: "Menikah"
+                        occupation: "Guru"
+                        background_story: "Guru dengan riwayat depresi"
+                        personality_type: "ambivert"
+                        symptom_intensity: 5
+                        personality_traits: { "depression_level": "medium" }
+                        avatar_path: "/models/default.glb"
+                        created_at: "2024-12-26T09:00:00.000Z"
+                        is_active: true
+                        is_global: true
+                        user_id: 2
+          "500":
+            description: Error server
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    status:
+                      type: string
+                      example: error
+                    message:
+                      type: string
+
+      post:
+        tags: [Patients]
+        summary: Tambah pasien baru
+        description: >
+          Membuat pasien baru dengan data lengkap. Field WAJIB diisi: patient_name,
+          background_story, personality_type, symptom_intensity, age, gender,
+          occupation, dan marital_status. Hanya personality_traits yang bersifat opsional.
+          Sistem akan otomatis generate embeddings (RAG) dari data pasien untuk
+          meningkatkan akurasi response AI. Jika embedding gagal, pasien tetap
+          dibuat tanpa RAG data.
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [patient_name, background_story, personality_type, symptom_intensity, age, gender, occupation, marital_status]
+                properties:
+                  patient_name:
+                    type: string
+                    description: Nama lengkap pasien (WAJIB)
+                    example: "Budi Santoso"
+                  background_story:
+                    type: string
+                    description: Latar belakang dan riwayat pasien (WAJIB)
+                    example: "Mahasiswa semester 6 yang mengalami anxiety sejak pandemi..."
+                  personality_type:
+                    type: string
+                    description: Tipe kepribadian (WAJIB)
+                    example: "introvert"
+                  symptom_intensity:
+                    type: integer
+                    minimum: 1
+                    maximum: 10
+                    description: Intensitas gejala 1-10 (WAJIB)
+                    example: 7
+                  age:
+                    type: integer
+                    description: Usia pasien dalam tahun (WAJIB, harus positif)
+                    example: 22
+                  gender:
+                    type: string
+                    description: Jenis kelamin (WAJIB)
+                    example: "Laki-laki"
+                  occupation:
+                    type: string
+                    description: Pekerjaan/profesi (WAJIB)
+                    example: "Mahasiswa"
+                  marital_status:
+                    type: string
+                    description: Status pernikahan (WAJIB)
+                    example: "Belum Menikah"
+                  personality_traits:
+                    type: object
+                    nullable: true
+                    description: Traits kepribadian dalam bentuk key-value (OPSIONAL)
+                    example: { "anxiety_level": "high", "social_comfort": "low" }
+                  is_global:
+                    type: boolean
+                    nullable: true
+                    description: Apakah pasien bisa diakses semua user (default false)
+                    example: false
+                    default: false
               examples:
-                success:
-                  summary: Pasien berhasil dibuat
+                complete:
+                  summary: Data lengkap dengan personality_traits
                   value:
-                    status: success
-                    message: "Pasien berhasil ditambahkan"
+                    patient_name: "Budi Santoso"
+                    background_story: "Mahasiswa yang mengalami anxiety disorder"
+                    personality_type: "introvert"
+                    symptom_intensity: 7
+                    age: 22
+                    gender: "Laki-laki"
+                    occupation: "Mahasiswa"
+                    marital_status: "Belum Menikah"
+                    personality_traits:
+                      anxiety_level: "high"
+                      social_comfort: "low"
+                      openness: "medium"
+                    is_global: false
+                without_traits:
+                  summary: Tanpa personality_traits (tetap valid)
+                  value:
+                    patient_name: "Siti Aminah"
+                    background_story: "Pasien dengan riwayat depresi ringan"
+                    personality_type: "ambivert"
+                    symptom_intensity: 5
+                    age: 28
+                    gender: "Perempuan"
+                    occupation: "Guru"
+                    marital_status: "Menikah"
+        responses:
+          "201":
+            description: Pasien berhasil ditambahkan
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    status:
+                      type: string
+                      example: success
+                    message:
+                      type: string
+                      example: "Pasien berhasil ditambahkan"
                     data:
-                      patient_id: 1
-                      user_id: 1
-                      patient_name: "Budi Santoso"
-                      background_story: "Mahasiswa yang mengalami anxiety"
-                      personality_type: "introvert"
-                      symptom_intensity: 7
-                      age: 22
-                      gender: "Laki-laki"
-                      occupation: "Mahasiswa"
-                      marital_status: "Belum Menikah"
-                      personality_traits:
-                        anxiety_level: "high"
-                      avatar_path: "/models/default.glb"
-                      is_active: true
-                      is_global: false
-                      knowledge_base: [
-                        {
-                          text: "Mahasiswa semester 6 yang mengalami anxiety",
-                          vector: [0.123, 0.456, ...]
-                        }
-                      ]
-        "400":
-          description: Validasi gagal
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: error
-                  message:
-                    type: string
-              examples:
-                missing_required:
-                  summary: Field required tidak diisi
-                  value:
-                    status: error
-                    message: "patient_name dan background_story harus diisi"
-                invalid_intensity:
-                  summary: Intensitas tidak valid
-                  value:
-                    status: error
-                    message: "symptom_intensity harus antara 1-10"
-                invalid_age:
-                  summary: Age tidak valid
-                  value:
-                    status: error
-                    message: "age harus bernilai positif"
-        "500":
-          description: Error server
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: error
-                  message:
-                    type: string
+                      type: object
+                      properties:
+                        patient_id:
+                          type: integer
+                          example: 1
+                        user_id:
+                          type: integer
+                          example: 1
+                        patient_name:
+                          type: string
+                          example: "Budi Santoso"
+                        background_story:
+                          type: string
+                        personality_type:
+                          type: string
+                          example: "introvert"
+                        symptom_intensity:
+                          type: integer
+                          example: 7
+                        age:
+                          type: integer
+                          example: 22
+                        gender:
+                          type: string
+                          example: "Laki-laki"
+                        occupation:
+                          type: string
+                          example: "Mahasiswa"
+                        marital_status:
+                          type: string
+                          example: "Belum Menikah"
+                        personality_traits:
+                          type: object
+                          nullable: true
+                        avatar_path:
+                          type: string
+                          example: "/models/default.glb"
+                        is_active:
+                          type: boolean
+                          example: true
+                        is_global:
+                          type: boolean
+                          example: false
+                        knowledge_base:
+                          type: array
+                          nullable: true
+                          description: RAG embeddings (jika berhasil generate)
+                          items:
+                            type: object
+                            properties:
+                              text:
+                                type: string
+                              vector:
+                                type: array
+                                items:
+                                  type: number
+                examples:
+                  success:
+                    summary: Pasien berhasil dibuat
+                    value:
+                      status: success
+                      message: "Pasien berhasil ditambahkan"
+                      data:
+                        patient_id: 1
+                        user_id: 1
+                        patient_name: "Budi Santoso"
+                        background_story: "Mahasiswa yang mengalami anxiety"
+                        personality_type: "introvert"
+                        symptom_intensity: 7
+                        age: 22
+                        gender: "Laki-laki"
+                        occupation: "Mahasiswa"
+                        marital_status: "Belum Menikah"
+                        personality_traits:
+                          anxiety_level: "high"
+                        avatar_path: "/models/default.glb"
+                        is_active: true
+                        is_global: false
+                        knowledge_base: [
+                          {
+                            text: "Mahasiswa semester 6 yang mengalami anxiety",
+                            vector: [0.123, 0.456]
+                          }
+                        ]
+          "400":
+            description: Validasi gagal
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    status:
+                      type: string
+                      example: error
+                    message:
+                      type: string
+                examples:
+                  missing_required:
+                    summary: Field wajib tidak lengkap
+                    value:
+                      status: error
+                      message: "Semua field kecuali personality_traits wajib diisi."
+                  invalid_intensity:
+                    summary: Intensitas tidak valid
+                    value:
+                      status: error
+                      message: "symptom_intensity harus antara 1-10"
+                  invalid_age:
+                    summary: Age tidak valid
+                    value:
+                      status: error
+                      message: "age harus bernilai positif"
+          "500":
+            description: Error server
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    status:
+                      type: string
+                      example: error
+                    message:
+                      type: string
 
   /patients/{id}:
     get:
@@ -1264,7 +1301,64 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Patient"
+                type: object
+                properties:
+                  patient_id:
+                    type: integer
+                    example: 1
+                  user_id:
+                    type: integer
+                    example: 1
+                  patient_name:
+                    type: string
+                    example: "Budi Santoso"
+                  background_story:
+                    type: string
+                    example: "Mahasiswa yang mengalami anxiety"
+                  personality_type:
+                    type: string
+                    example: "introvert"
+                  symptom_intensity:
+                    type: integer
+                    example: 7
+                  age:
+                    type: integer
+                    example: 22
+                  gender:
+                    type: string
+                    example: "Laki-laki"
+                  occupation:
+                    type: string
+                    example: "Mahasiswa"
+                  marital_status:
+                    type: string
+                    example: "Belum Menikah"
+                  personality_traits:
+                    type: object
+                    nullable: true
+                    example: { "anxiety_level": "high" }
+                  avatar_path:
+                    type: string
+                    example: "/models/default.glb"
+                  profile_image:
+                    type: string
+                    nullable: true
+                    example: null
+                  is_active:
+                    type: boolean
+                    example: true
+                  is_global:
+                    type: boolean
+                    example: false
+                  knowledge_base:
+                    type: array
+                    nullable: true
+                    items:
+                      type: object
+                  created_at:
+                    type: string
+                    format: date-time
+                    example: "2024-12-27T10:00:00.000Z"
               examples:
                 success:
                   summary: Detail pasien
@@ -1332,9 +1426,12 @@ paths:
       description: >
         Mengupdate data pasien yang sudah ada. User biasa hanya bisa 
         mengupdate pasien miliknya sendiri. Admin bisa mengupdate 
-        semua pasien. Sistem akan otomatis regenerate embeddings (RAG) 
-        dari data pasien yang diupdate untuk meningkatkan akurasi 
-        response AI. Hanya admin yang bisa mengubah status is_global.
+        semua pasien. Field WAJIB diisi: patient_name, background_story, 
+        personality_type, symptom_intensity, age, gender, occupation, 
+        dan marital_status. Hanya personality_traits yang bersifat opsional.
+        Sistem akan otomatis regenerate embeddings (RAG) dari data pasien 
+        yang diupdate untuk meningkatkan akurasi response AI. Hanya admin 
+        yang bisa mengubah status is_global.
       parameters:
         - name: id
           in: path
@@ -1349,61 +1446,55 @@ paths:
           application/json:
             schema:
               type: object
-              required: [patient_name, background_story]
+              required: [patient_name, background_story, personality_type, symptom_intensity, age, gender, occupation, marital_status]
               properties:
                 patient_name:
                   type: string
-                  description: Nama lengkap pasien
+                  description: Nama lengkap pasien (WAJIB)
                   example: "Budi Santoso"
                 background_story:
                   type: string
-                  description: Latar belakang dan riwayat pasien
+                  description: Latar belakang dan riwayat pasien (WAJIB)
                   example: "Mahasiswa semester 6 yang mengalami anxiety sejak pandemi..."
                 personality_type:
                   type: string
-                  nullable: true
-                  description: Tipe kepribadian (opsional)
+                  description: Tipe kepribadian (WAJIB)
                   example: "introvert"
                 symptom_intensity:
                   type: integer
                   minimum: 1
                   maximum: 10
-                  nullable: true
-                  description: Intensitas gejala 1-10 (opsional)
+                  description: Intensitas gejala 1-10 (WAJIB)
                   example: 7
                 age:
                   type: integer
-                  nullable: true
-                  description: Usia pasien (harus positif)
+                  description: Usia pasien dalam tahun (WAJIB, harus positif)
                   example: 22
                 gender:
                   type: string
-                  nullable: true
-                  description: Jenis kelamin
+                  description: Jenis kelamin (WAJIB)
                   example: "Laki-laki"
                 occupation:
                   type: string
-                  nullable: true
-                  description: Pekerjaan/profesi
+                  description: Pekerjaan/profesi (WAJIB)
                   example: "Mahasiswa"
                 marital_status:
                   type: string
-                  nullable: true
-                  description: Status pernikahan
+                  description: Status pernikahan (WAJIB)
                   example: "Belum Menikah"
                 personality_traits:
                   type: object
                   nullable: true
-                  description: Traits kepribadian dalam bentuk key-value
+                  description: Traits kepribadian dalam bentuk key-value (OPSIONAL)
                   example: { "anxiety_level": "high", "social_comfort": "low" }
                 is_global:
                   type: boolean
                   nullable: true
-                  description: Apakah pasien bisa diakses semua user (hanya admin)
+                  description: Apakah pasien bisa diakses semua user (hanya admin yang bisa ubah)
                   example: false
             examples:
               complete:
-                summary: Update data lengkap
+                summary: Update data lengkap dengan personality_traits
                 value:
                   patient_name: "Budi Santoso"
                   background_story: "Mahasiswa yang mengalami anxiety disorder dan social phobia"
@@ -1418,12 +1509,17 @@ paths:
                     social_comfort: "low"
                     openness: "medium"
                   is_global: false
-              partial:
-                summary: Update sebagian field
+              without_traits:
+                summary: Update tanpa personality_traits (tetap valid)
                 value:
                   patient_name: "Budi Santoso"
                   background_story: "Mahasiswa yang mengalami anxiety disorder"
+                  personality_type: "introvert"
                   symptom_intensity: 8
+                  age: 22
+                  gender: "Laki-laki"
+                  occupation: "Mahasiswa"
+                  marital_status: "Belum Menikah"
       responses:
         "200":
           description: Pasien berhasil diupdate
@@ -1439,7 +1535,40 @@ paths:
                     type: string
                     example: "Data pasien berhasil diperbarui"
                   data:
-                    $ref: "#/components/schemas/Patient"
+                    type: object
+                    properties:
+                      patient_id:
+                        type: integer
+                      user_id:
+                        type: integer
+                      patient_name:
+                        type: string
+                      background_story:
+                        type: string
+                      personality_type:
+                        type: string
+                      symptom_intensity:
+                        type: integer
+                      age:
+                        type: integer
+                      gender:
+                        type: string
+                      occupation:
+                        type: string
+                      marital_status:
+                        type: string
+                      personality_traits:
+                        type: object
+                        nullable: true
+                      avatar_path:
+                        type: string
+                      is_active:
+                        type: boolean
+                      is_global:
+                        type: boolean
+                      knowledge_base:
+                        type: array
+                        nullable: true
               examples:
                 success:
                   summary: Update berhasil
@@ -1466,7 +1595,7 @@ paths:
                       knowledge_base: [
                         {
                           text: "Mahasiswa semester 6 yang mengalami anxiety dan social phobia",
-                          vector: [0.123, 0.456, ...]
+                          vector: [0.123, 0.456]
                         }
                       ]
         "400":
@@ -1483,10 +1612,10 @@ paths:
                     type: string
               examples:
                 missing_required:
-                  summary: Field required tidak diisi
+                  summary: Field wajib tidak lengkap
                   value:
                     status: error
-                    message: "Nama dan latar belakang wajib diisi."
+                    message: "Semua field kecuali personality_traits wajib diisi."
         "403":
           description: Akses ditolak
           content:
@@ -1731,7 +1860,7 @@ paths:
       description: >
         Mengambil daftar semua session milik user yang sedang login.
         Bisa difilter berdasarkan patient_id atau status session.
-        Response mencakup informasi patient yang terkait.
+        Response mencakup informasi patient yang terkait termasuk symptom_intensity.
       parameters:
         - name: patient_id
           in: query
@@ -1786,10 +1915,16 @@ paths:
                           format: date-time
                           nullable: true
                           example: "2024-12-27T11:30:00.000Z"
+                        symptom_intensity:
+                          type: integer
+                          nullable: true
+                          description: Intensitas gejala pasien (1-10)
+                          example: 7
                         status:
                           type: string
                           enum: [ongoing, completed, cancelled]
                           example: "ongoing"
+                          description: Status session (default "ongoing" jika tidak ada)
               examples:
                 all_sessions:
                   summary: Semua session user
@@ -1802,6 +1937,7 @@ paths:
                         patient_image: null
                         start_time: "2024-12-27T10:00:00.000Z"
                         end_time: null
+                        symptom_intensity: 7
                         status: "ongoing"
                       - session_id: 2
                         patient_id: 5
@@ -1809,6 +1945,7 @@ paths:
                         patient_image: null
                         start_time: "2024-12-26T14:00:00.000Z"
                         end_time: "2024-12-26T15:30:00.000Z"
+                        symptom_intensity: 7
                         status: "completed"
                 filtered_by_patient:
                   summary: Filter berdasarkan patient_id
@@ -1821,6 +1958,7 @@ paths:
                         patient_image: null
                         start_time: "2024-12-27T10:00:00.000Z"
                         end_time: null
+                        symptom_intensity: 7
                         status: "ongoing"
                 filtered_by_status:
                   summary: Filter berdasarkan status
@@ -1833,6 +1971,7 @@ paths:
                         patient_image: "/uploads/patient_7.jpg"
                         start_time: "2024-12-25T09:00:00.000Z"
                         end_time: "2024-12-25T10:15:00.000Z"
+                        symptom_intensity: 5
                         status: "completed"
         "500":
           description: Error server
@@ -1947,23 +2086,98 @@ paths:
                     type: string
 
   /sessions/{id}:
-    get:
+    patch:
       tags: [Sessions]
-      summary: Ambil detail session
+      summary: Update session
       description: >
-        Mengambil detail lengkap session berdasarkan ID.
-        User hanya bisa mengakses session miliknya sendiri.
+        Mengupdate data session seperti status, end_time, dan expression_data.
+        User hanya bisa update session miliknya sendiri.
+        Status valid: ongoing, completed, cancelled.
+        Setiap update akan menyimpan data evaluasi ekspresi wajah ke database.
       parameters:
         - name: id
           in: path
           required: true
-          description: ID session
+          description: ID session yang akan diupdate
           schema:
             type: integer
           example: 1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [ongoing, completed, cancelled]
+                  description: Status session baru
+                  example: "completed"
+                end_time:
+                  type: string
+                  format: date-time
+                  description: Waktu akhir session (ISO 8601)
+                  example: "2024-12-27T11:30:00.000Z"
+                expression_data:
+                  type: object
+                  description: Data evaluasi ekspresi wajah dari analisis video
+                  properties:
+                    happy:
+                      type: number
+                      description: Persentase ekspresi happy (0-1)
+                      example: 0.65
+                    neutral:
+                      type: number
+                      description: Persentase ekspresi neutral (0-1)
+                      example: 0.25
+                    sad:
+                      type: number
+                      description: Persentase ekspresi sad (0-1)
+                      example: 0.1
+                    angry:
+                      type: number
+                      description: Persentase ekspresi angry (0-1)
+                      example: 0.0
+                    surprised:
+                      type: number
+                      description: Persentase ekspresi surprised (0-1)
+                      example: 0.0
+                  example:
+                    happy: 0.65
+                    neutral: 0.25
+                    sad: 0.1
+                    angry: 0.0
+                    surprised: 0.0
+            examples:
+              complete_session:
+                summary: Menyelesaikan session dengan expression data
+                value:
+                  status: "completed"
+                  end_time: "2024-12-27T11:30:00.000Z"
+                  expression_data:
+                    happy: 0.65
+                    neutral: 0.25
+                    sad: 0.1
+                    angry: 0.0
+                    surprised: 0.0
+              cancel_session:
+                summary: Membatalkan session
+                value:
+                  status: "cancelled"
+                  end_time: "2024-12-27T10:45:00.000Z"
+              change_status_only:
+                summary: Update status saja tanpa expression_data
+                value:
+                  status: "completed"
+              with_empty_expression:
+                summary: Update dengan expression_data kosong
+                value:
+                  status: "completed"
+                  end_time: "2024-12-27T11:30:00.000Z"
+                  expression_data: {}
       responses:
         "200":
-          description: Detail session berhasil diambil
+          description: Session berhasil diupdate
           content:
             application/json:
               schema:
@@ -1972,8 +2186,12 @@ paths:
                   success:
                     type: boolean
                     example: true
+                  message:
+                    type: string
+                    example: "Session berhasil diupdate"
                   data:
                     type: object
+                    description: Data session yang telah diupdate
                     properties:
                       session_id:
                         type: integer
@@ -1987,38 +2205,80 @@ paths:
                       start_time:
                         type: string
                         format: date-time
-                        example: "2024-12-27T10:00:00.000Z"
                       end_time:
                         type: string
                         format: date-time
                         nullable: true
-                        example: "2024-12-27T11:30:00.000Z"
                       status:
                         type: string
-                        example: "ongoing"
+                  expression_data:
+                    type: object
+                    description: Data evaluasi ekspresi wajah yang tersimpan
+                    properties:
+                      session_id:
+                        type: integer
+                        example: 1
+                      expression:
+                        type: object
+                        description: Object berisi data ekspresi
+                        example:
+                          happy: 0.65
+                          neutral: 0.25
+                          sad: 0.1
               examples:
-                ongoing_session:
-                  summary: Session yang masih berjalan
+                success_with_expression:
+                  summary: Update berhasil dengan expression data
                   value:
                     success: true
+                    message: "Session berhasil diupdate"
                     data:
                       session_id: 1
                       user_id: 1
                       patient_id: 5
                       start_time: "2024-12-27T10:00:00.000Z"
-                      end_time: null
-                      status: "ongoing"
-                completed_session:
-                  summary: Session yang sudah selesai
+                      end_time: "2024-12-27T11:30:00.000Z"
+                      status: "completed"
+                    expression_data:
+                      session_id: 1
+                      expression:
+                        happy: 0.65
+                        neutral: 0.25
+                        sad: 0.1
+                        angry: 0.0
+                        surprised: 0.0
+                success_without_expression:
+                  summary: Update berhasil tanpa expression data
                   value:
                     success: true
+                    message: "Session berhasil diupdate"
                     data:
-                      session_id: 2
+                      session_id: 1
                       user_id: 1
                       patient_id: 5
-                      start_time: "2024-12-26T14:00:00.000Z"
-                      end_time: "2024-12-26T15:30:00.000Z"
+                      start_time: "2024-12-27T10:00:00.000Z"
+                      end_time: "2024-12-27T11:30:00.000Z"
                       status: "completed"
+                    expression_data:
+                      session_id: 1
+                      expression: {}
+        "400":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+              examples:
+                invalid_status:
+                  summary: Status tidak valid
+                  value:
+                    success: false
+                    message: "Status harus salah satu dari: ongoing, completed, cancelled"
         "404":
           description: Session tidak ditemukan atau tidak punya akses
           content:
@@ -2294,13 +2554,15 @@ paths:
                   error:
                     type: string
 
+  
   /reports/evaluation/{session_id}:
     get:
       tags: [Reports]
       summary: Ambil evaluasi session
       description: >
-        Mengambil data evaluasi session. Jika belum ada evaluasi,
-        akan return data default dengan evaluated: false.
+        Mengambil data evaluasi session beserta data evaluasi ekspresi wajah.
+        Jika belum ada evaluasi, akan return data default dengan evaluated: false
+        dan expression_data: null.
       parameters:
         - name: session_id
           in: path
@@ -2342,6 +2604,12 @@ paths:
                   created_at:
                     type: string
                     format: date-time
+                    description: Waktu evaluasi dibuat (hanya ada jika evaluated=true)
+                  expression_data:
+                    type: object
+                    nullable: true
+                    description: Data evaluasi ekspresi wajah dari analisis video
+                    example: { "happy": 0.65, "neutral": 0.25, "sad": 0.1 }
               examples:
                 evaluated:
                   summary: Session sudah dievaluasi
@@ -2353,6 +2621,12 @@ paths:
                     feedback_text: "Konselor menunjukkan empati yang baik"
                     evaluated: true
                     created_at: "2024-12-27T11:00:00.000Z"
+                    expression_data:
+                      happy: 0.65
+                      neutral: 0.25
+                      sad: 0.1
+                      angry: 0.0
+                      surprised: 0.0
                 not_evaluated:
                   summary: Session belum dievaluasi
                   value:
@@ -2362,6 +2636,7 @@ paths:
                     question_score: 0
                     feedback_text: null
                     evaluated: false
+                    expression_data: null
         "404":
           description: Session tidak ditemukan
           content:
@@ -2543,27 +2818,33 @@ paths:
                     example: "Evaluasi berhasil disimpan"
                   evaluation:
                     type: object
-                    description: Data evaluasi yang tersimpan
+                    description: Data evaluasi yang tersimpan (tanpa created_at)
                     properties:
                       session_id:
                         type: integer
+                        example: 1
                       empathy_score:
                         type: integer
+                        example: 82
                       question_score:
                         type: integer
+                        example: 75
                       feedback_text:
                         type: string
                         nullable: true
+                        example: "Analisis otomatis: Konselor menggunakan 5 pertanyaan terbuka"
                   classification_results:
                     type: array
-                    description: Hasil klasifikasi per message
+                    description: Hasil klasifikasi per message dari ML model
                     items:
                       type: object
                       properties:
                         transcript_id:
                           type: integer
+                          description: ID transkrip
                         message:
                           type: string
+                          description: Isi pesan
                         predicted_class:
                           type: string
                           description: Tipe pertanyaan (open/closed/reflection/etc)
@@ -2572,34 +2853,42 @@ paths:
                           description: Confidence score 0-1
                   detailed_analysis:
                     type: object
+                    description: Analisis detail lengkap
                     properties:
                       model_statistics:
                         type: object
-                        description: Statistik dari ML model
+                        description: Statistik dari ML model (object dengan berbagai kategori)
                         properties:
                           open_questions:
                             type: integer
+                            description: Jumlah pertanyaan terbuka
                           closed_questions:
                             type: integer
+                            description: Jumlah pertanyaan tertutup
                           reflections:
                             type: integer
+                            description: Jumlah refleksi
                       total_counselor_messages:
                         type: integer
                         description: Total pesan dari konselor
                       prosody_analysis:
                         type: object
                         nullable: true
-                        description: Analisis prosody user
+                        description: Analisis prosody user (rata-rata)
                         properties:
                           avg_pitch:
                             type: number
+                            description: Rata-rata pitch
                           avg_energy:
                             type: number
+                            description: Rata-rata energy
                           avg_tempo:
                             type: number
+                            description: Rata-rata tempo
                       python_api_used:
                         type: string
-                        description: URL Python API yang digunakan
+                        description: URL Python API yang digunakan untuk analisis
+                        example: "http://localhost:5000"
               examples:
                 success:
                   summary: Analisis berhasil
@@ -2610,7 +2899,7 @@ paths:
                       session_id: 1
                       empathy_score: 82
                       question_score: 75
-                      feedback_text: "Analisis otomatis: Konselor menggunakan 5 pertanyaan terbuka"
+                      feedback_text: "Analisis otomatis: Konselor menggunakan 5 pertanyaan terbuka dan 2 refleksi"
                     classification_results:
                       - transcript_id: 2
                         message: "Bagaimana perasaanmu saat ini?"
@@ -2620,12 +2909,17 @@ paths:
                         message: "Apakah kamu merasa cemas?"
                         predicted_class: "closed_question"
                         confidence: 0.88
+                      - transcript_id: 6
+                        message: "Jadi kamu merasa tertekan karena deadline kuliah ya"
+                        predicted_class: "reflection"
+                        confidence: 0.92
                     detailed_analysis:
                       model_statistics:
                         open_questions: 5
                         closed_questions: 2
                         reflections: 3
-                      total_counselor_messages: 10
+                        encouragement: 1
+                      total_counselor_messages: 11
                       prosody_analysis:
                         avg_pitch: 225.3
                         avg_energy: 0.68
@@ -2694,9 +2988,18 @@ paths:
                     example: false
                   message:
                     type: string
+                    example: "Error during analysis"
                   details:
                     type: string
                     description: Stack trace (hanya di development mode)
+                    nullable: true
+              examples:
+                server_error:
+                  summary: Error saat analisis
+                  value:
+                    success: false
+                    message: "Failed to analyze session"
+                    details: "Error: Connection refused to Python API"
 
   /reports/stats:
     get:
