@@ -52,7 +52,7 @@ async function analyzeWithDualModels(transcripts) {
       }));
 
     if (counselorMessages.length === 0) {
-      throw new Error("Tidak ada pesan konselor untuk dianalisis");
+      throw new Error("No counselor messages found for analysis");
     }
 
     // Separate questions and non-questions
@@ -109,13 +109,13 @@ async function analyzeWithDualModels(transcripts) {
       total_statements: nonQuestions.length,
     };
   } catch (error) {
-    console.error("❌ Dual model analysis error:", error.message);
+    console.error(`[Text Analysis] Error: ${error.message}`);
     throw new Error(`Model analysis failed: ${error.message}`);
   }
 }
 
 // ============================================================================
-// HELPER: Rule-Based Prosody Analysis (LOGIKA BARU)
+// HELPER: Rule-Based Prosody Analysis
 // ============================================================================
 
 function analyzeProsodyRules(aggregateData) {
@@ -132,8 +132,7 @@ function analyzeProsodyRules(aggregateData) {
   let labels = [];
   let insights = [];
 
-  // --- 1. Rule Intonasi (Empatik vs Datar) ---
-  // Threshold: < 0.02 (Datar), > 0.05 (Ekspresif)
+  // 1. Rule Intonasi (Empatik vs Datar)
   let intonationStatus = "Normal";
   if (avg_energy_std < 0.025) {
     intonationStatus = "Monoton/Datar";
@@ -147,8 +146,7 @@ function analyzeProsodyRules(aggregateData) {
     insights.push("Variasi nada cukup baik dan terkontrol.");
   }
 
-  // --- 2. Rule Kecepatan (Tergesa vs Tenang) ---
-  // Threshold: > 5.5 (Cepat), < 3.0 (Lambat)
+  // 2. Rule Kecepatan (Tergesa vs Tenang)
   let speedStatus = "Normal";
   if (avg_speaking_rate > 5.5) {
     speedStatus = "Tergesa-gesa";
@@ -162,8 +160,7 @@ function analyzeProsodyRules(aggregateData) {
     insights.push("Tempo bicara pas dan tenang.");
   }
 
-  // --- 3. Rule Keyakinan (Jeda & Silence) ---
-  // Threshold: Silence Ratio > 0.35 atau Pauses > 8 (pada sampel pendek)
+  // 3. Rule Keyakinan (Jeda & Silence)
   let confidenceStatus = "Yakin/Lancar";
   if (avg_silence_ratio > 0.35 || (total_pauses / aggregateData.total_speech_duration > 0.5)) {
     confidenceStatus = "Banyak Jeda / Ragu";
@@ -258,18 +255,15 @@ OUTPUT (JSON):
 `;
   }
 
-  // --- RETRY LOOP START ---
+  // --- RETRY LOOP ---
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      console.log(`🤖 Gemini Attempt ${attempt}/${MAX_RETRIES}...`);
-      
       const geminiData = await callGeminiAPI(feedbackPrompt);
 
       // --- PARSING RESPONSE ---
       let rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
       rawText = rawText.replace(/```json|```/g, "").trim();
 
-      // JSON Extraction Logic
       const startIndex = rawText.indexOf('{');
       const endIndex = rawText.lastIndexOf('}');
 
@@ -279,11 +273,8 @@ OUTPUT (JSON):
 
       const feedback = JSON.parse(rawText.substring(startIndex, endIndex + 1));
 
-      // Validasi sederhana isi JSON agar tidak kosong
       if (!feedback.feedback_text) throw new Error("JSON missing feedback_text");
 
-      console.log("✅ Gemini feedback generated successfully.");
-      
       return {
         feedback_text: feedback.feedback_text,
         strengths: Array.isArray(feedback.strengths) ? feedback.strengths : [],
@@ -293,20 +284,20 @@ OUTPUT (JSON):
       };
 
     } catch (error) {
-      console.error(`❌ Gemini Attempt ${attempt} failed:`, error.message);
+      console.warn(`[Gemini Feedback] Attempt ${attempt} failed: ${error.message}`);
 
       if (attempt === MAX_RETRIES) {
-        console.error("⚠️ All retry attempts failed. Switching to fallback.");
+        console.error("[Gemini Feedback] All retry attempts failed. Switching to fallback.");
       } else {
         await wait(RETRY_DELAY_MS);
       }
     }
   }
-  // --- RETRY LOOP END ---
 
-  // Jika semua loop gagal, jalankan fallback
+  // Fallback
   return generateFallbackFeedback(modelAnalysis.statistics);
 }
+
 // ============================================================================
 // STATISTICS & FALLBACK HELPERS 
 // ============================================================================
@@ -352,22 +343,20 @@ function calculateModelStatistics(results, totalMessages, totalQuestions, totalS
 }
 
 function calculateQuestionScore(counts, total) {
-  // Simplified scoring logic
   const open = counts["Terbuka"] || 0;
-  return Math.min(100, Math.round((open / total) * 100) + 40); // Dummy logic placeholder
+  return Math.min(100, Math.round((open / total) * 100) + 40); 
 }
 
 function calculateEmpathyScore(counts, total) {
-  // Simplified scoring logic
   const empatik = counts["Empatik"] || 0;
-  return Math.min(100, Math.round((empatik / total) * 100) + 30); // Dummy logic placeholder
+  return Math.min(100, Math.round((empatik / total) * 100) + 30);
 }
 
 function generateFallbackFeedback(stats) {
   return {
-    feedback_text: `Sesi selesai dengan skor ${stats.overall_score}. Tingkatkan empati.`,
-    strengths: ["Analisis otomatis"],
-    improvements: ["Periksa detail manual"]
+    feedback_text: `Sesi selesai dengan skor ${stats.overall_score}. Mohon periksa detail analisis manual.`,
+    strengths: ["Analisis otomatis berhasil"],
+    improvements: ["Tingkatkan variasi pertanyaan"]
   };
 }
 
@@ -375,16 +364,17 @@ function generateFallbackFeedback(stats) {
 // MAIN FUNCTION
 // ============================================================================
 
+
 export async function analyzeSession(sessionId, userId) {
     // 1. Validation & Data Fetching
     const session = await SessionModel.getSessionById(sessionId, userId); 
-    if (session.status !== "completed") throw new Error("Session belum selesai");
+    if (session.status !== "completed") throw new Error("Session is not completed");
 
     const existingEval = await SessionEvaluationModel.getExistingEvaluation(sessionId);
-    if (existingEval) throw new Error("Session sudah pernah dievaluasi");
+    if (existingEval) throw new Error("Session already evaluated");
 
     const transcripts = await SessionTranscriptModel.getTranscriptsBySessionId(sessionId);
-    if (!transcripts || transcripts.length === 0) throw new Error("Tidak ada transkrip");
+    if (!transcripts || transcripts.length === 0) throw new Error("No transcripts found");
 
     // 2. Text Analysis (Python ML)
     const modelAnalysis = await analyzeWithDualModels(transcripts);
@@ -410,14 +400,14 @@ export async function analyzeSession(sessionId, userId) {
         aggregateProsody.avg_silence_ratio = sum('silence_ratio') / validProsodyData.length;
     }
 
-    // --- CALL RULE BASED SYSTEM HERE ---
+    // Call Rule-Based System
     const prosodyAnalysisResult = analyzeProsodyRules(aggregateProsody);
     
     // 4. Generate Feedback (Gemini as Writer)
     const geminiFeedback = await generateFeedbackWithGemini(
       transcripts,
       modelAnalysis,
-      prosodyAnalysisResult // Pass hasil analisis rule-based, bukan raw data
+      prosodyAnalysisResult
     );
     
     // 5. Save Evaluation

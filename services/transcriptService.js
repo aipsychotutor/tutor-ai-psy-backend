@@ -23,7 +23,7 @@ export async function saveTranscripts(session_id, userMessage, messages, prosody
     .insert(transcriptsToInsert);
 
   if (error) {
-    console.error("❌ [DATABASE] Insert failed:", error);
+    console.error(" [DATABASE] Insert failed:", error);
     throw error;
   }
 
