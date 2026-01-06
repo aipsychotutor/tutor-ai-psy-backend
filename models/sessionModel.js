@@ -25,7 +25,6 @@ async function createNewSession(userId, patientId) {
       {
         user_id: userId,
         patient_id: patientId,
-        start_time: new Date().toISOString(),
         status: "ongoing",
       },
     ])
