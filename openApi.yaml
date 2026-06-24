@@ -57,8 +57,9 @@ components:
       type: object
       properties:
         user_id:
-          type: integer
-          example: 1
+          type: string
+          format: uuid
+          example: "0de68149-2fa3-4a7c-.............."
         username:
           type: string
           example: "johndoe"
@@ -82,11 +83,13 @@ components:
       type: object
       properties:
         patient_id:
-          type: integer
-          example: 1
+          type: string
+          format: uuid
+          example: "0de68149-2fa3-4a7c-.............."
         user_id:
-          type: integer
-          example: 1
+          type: string
+          format: uuid
+          example: "0de68149-2fa3-4a7c-.............."
         patient_name:
           type: string
           example: "Budi Santoso"
@@ -157,14 +160,17 @@ components:
       type: object
       properties:
         session_id:
-          type: integer
-          example: 1
+          type: string
+          format: uuid
+          example: "0de68149-2fa3-4a7c-.............."
         user_id:
-          type: integer
-          example: 1
+          type: string
+          format: uuid
+          example: "0de68149-2fa3-4a7c-.............."
         patient_id:
-          type: integer
-          example: 5
+          type: string
+          format: uuid
+          example: "0de68149-2fa3-4a7c-.............."
         start_time:
           type: string
           format: date-time
@@ -183,11 +189,13 @@ components:
       type: object
       properties:
         session_id:
-          type: integer
-          example: 1
+          type: string
+          format: uuid
+          example: "0de68149-2fa3-4a7c-.............."
         patient_id:
-          type: integer
-          example: 5
+          type: string
+          format: uuid
+          example: "0de68149-2fa3-4a7c-.............."
         patient_name:
           type: string
           example: "Budi Santoso"
@@ -213,11 +221,13 @@ components:
       type: object
       properties:
         session_id:
-          type: integer
-          example: 1
+          type: string
+          format: uuid
+          example: "0de68149-2fa3-4a7c-.............."
         user_id:
-          type: integer
-          example: 1
+          type: string
+          format: uuid
+          example: "0de68149-2fa3-4a7c-.............."
         empathy_score:
           type: integer
           minimum: 0
@@ -244,11 +254,13 @@ components:
       type: object
       properties:
         transcript_id:
-          type: integer
-          example: 1
+          type: string
+          format: uuid
+          example: "0de68149-2fa3-4a7c-.............."
         session_id:
-          type: integer
-          example: 1
+          type: string
+          format: uuid
+          example: "0de68149-2fa3-4a7c-.............."
         sender:
           type: string
           enum: [user, ai]
@@ -278,11 +290,13 @@ components:
       type: object
       properties:
         persona_id:
-          type: integer
-          example: 1
+          type: string
+          format: uuid
+          example: "0de68149-2fa3-4a7c-.............."
         patient_id:
-          type: integer
-          example: 5
+          type: string
+          format: uuid
+          example: "0de68149-2fa3-4a7c-.............."
         name:
           type: string
           example: "Budi Santoso"
@@ -652,9 +666,10 @@ paths:
                   description: Pesan dari user
                   example: "Saya merasa sedih hari ini"
                 session_id:
-                  type: integer
+                  type: string
+                  format: uuid
                   description: ID session konseling yang aktif
-                  example: 1
+                  example: "0de68149-2fa3-4a7c-.............."
                 prosody_data:
                   type: object
                   description: Data prosody/intonasi suara (opsional)
@@ -672,8 +687,8 @@ paths:
               with_message:
                 summary: Chat dengan pesan
                 value:
-                  message: "Saya merasa cemas belakangan ini"
-                  session_id: 1
+                  message: "Halo, bagaimana kabarmu hari ini?"
+                  session_id: "0de68149-...."
                   prosody_data:
                     pitch: 250.3
                     energy: 0.65
@@ -773,8 +788,9 @@ paths:
           required: true
           description: ID session konseling
           schema:
-            type: integer
-          example: 1
+            type: string
+            format: uuid
+          example: "0de68149-2fa3-......"
       responses:
         "200":
           description: Persona berhasil diambil
@@ -791,11 +807,13 @@ paths:
                     description: Data persona AI aktif
                     properties:
                       persona_id:
-                        type: integer
-                        example: 1
+                        type: string
+                        format: uuid
+                        example: "0de68149-2fa3-4a7c-.............."
                       patient_id:
-                        type: integer
-                        example: 5
+                        type: string
+                        format: uuid
+                        example: "0de68149-2fa3-4a7c-.............."
                       name:
                         type: string
                         example: "Budi Santoso"
@@ -818,7 +836,7 @@ paths:
                     success: true
                     persona:
                       persona_id: 1
-                      patient_id: 5
+                      patient_id: "9bf37a2b-72ca-490e-90bd-c3908ee0a8af"
                       name: "Budi Santoso"
                       background_story: "Mahasiswa semester 6 yang mengalami anxiety"
                       personality_type: "introvert"
@@ -857,9 +875,10 @@ paths:
               required: [patient_id]
               properties:
                 patient_id:
-                  type: integer
+                  type: string
+                  format: uuid
                   description: ID pasien yang akan dijadikan persona
-                  example: 5
+                  example: "0de68149-2fa3-4a7c-.............."
             examples:
               valid:
                 summary: Set persona dengan patient_id
@@ -884,17 +903,20 @@ paths:
                     description: Data persona yang baru diset
                     properties:
                       persona_id:
-                        type: integer
+                        type: string
+                        format: uuid
                       patient_id:
-                        type: integer
+                        type: string
+                        format: uuid
                       name:
                         type: string
                       background_story:
                         type: string
                   patient_id:
-                    type: integer
+                    type: string
+                    format: uuid
                     description: ID pasien yang digunakan
-                    example: 5
+                    example: "0de68149-2fa3-4a7c-.............."
               examples:
                 success:
                   summary: Persona berhasil diset
@@ -955,8 +977,9 @@ paths:
                     type: object
                     properties:
                       patient_id:
-                        type: integer
-                        example: 1
+                        type: string
+                        format: uuid
+                        example: "0de68149-2fa3-4a7c-.............."
                       patient_name:
                         type: string
                         example: "Budi Santoso"
@@ -999,8 +1022,9 @@ paths:
                         type: boolean
                         example: false
                       user_id:
-                        type: integer
-                        example: 1
+                        type: string
+                        format: uuid
+                        example: "0de68149-2fa3-4a7c-.............."
                 examples:
                   success:
                     summary: Daftar pasien
@@ -1157,11 +1181,13 @@ paths:
                       type: object
                       properties:
                         patient_id:
-                          type: integer
-                          example: 1
+                          type: string
+                          format: uuid
+                          example: "0de68149-2fa3-4a7c-.............."
                         user_id:
-                          type: integer
-                          example: 1
+                          type: string
+                          format: uuid
+                          example: "0de68149-2fa3-4a7c-.............."
                         patient_name:
                           type: string
                           example: "Budi Santoso"
@@ -1293,8 +1319,9 @@ paths:
           required: true
           description: ID pasien
           schema:
-            type: integer
-          example: 1
+            type: string
+            format: uuid
+          example: "0de68149-2fa3-4a7c-.............."
       responses:
         "200":
           description: Detail pasien
@@ -1304,11 +1331,13 @@ paths:
                 type: object
                 properties:
                   patient_id:
-                    type: integer
-                    example: 1
+                    type: string
+                    format: uuid
+                    example: "0de68149-2fa3-4a7c-.............."
                   user_id:
-                    type: integer
-                    example: 1
+                    type: string
+                    format: uuid
+                    example: "0de68149-2fa3-4a7c-.............."
                   patient_name:
                     type: string
                     example: "Budi Santoso"
@@ -1438,8 +1467,9 @@ paths:
           required: true
           description: ID pasien yang akan diupdate
           schema:
-            type: integer
-          example: 1
+            type: string
+            format: uuid
+          example: "0de68149-2fa3-4a7c-.............."
       requestBody:
         required: true
         content:
@@ -1538,9 +1568,11 @@ paths:
                     type: object
                     properties:
                       patient_id:
-                        type: integer
+                        type: string
+                        format: uuid
                       user_id:
-                        type: integer
+                        type: string
+                        format: uuid
                       patient_name:
                         type: string
                       background_story:
@@ -1685,8 +1717,9 @@ paths:
           required: true
           description: ID pasien yang akan dihapus
           schema:
-            type: integer
-          example: 1
+            type: string
+            format: uuid
+          example: "0de68149-2fa3-4a7c-.............."
       responses:
         "200":
           description: Pasien berhasil dihapus
@@ -1764,8 +1797,9 @@ paths:
           required: true
           description: ID pasien
           schema:
-            type: integer
-          example: 1
+            type: string
+            format: uuid
+          example: "0de68149-2fa3-4a7c-.............."
       responses:
         "200":
           description: Path avatar pasien
@@ -1867,8 +1901,9 @@ paths:
           required: false
           description: Filter berdasarkan ID pasien
           schema:
-            type: integer
-          example: 5
+            type: string
+            format: uuid
+          example: "0de68149-2fa3-4a7c-.............."
         - name: status
           in: query
           required: false
@@ -1894,11 +1929,13 @@ paths:
                       type: object
                       properties:
                         session_id:
-                          type: integer
-                          example: 1
+                          type: string
+                          format: uuid
+                          example: "0de68149-2fa3-4a7c-.............."
                         patient_id:
-                          type: integer
-                          example: 5
+                          type: string
+                          format: uuid
+                          example: "0de68149-2fa3-4a7c-.............."
                         patient_name:
                           type: string
                           example: "Budi Santoso"
@@ -2004,14 +2041,15 @@ paths:
               required: [patient_id]
               properties:
                 patient_id:
-                  type: integer
+                  type: string
+                  format: uuid
                   description: ID pasien untuk session ini
-                  example: 5
+                  example: "0de68149-2fa3-4a7c-.............."
             examples:
               valid:
                 summary: Membuat session baru
                 value:
-                  patient_id: 5
+                  patient_id: "9bf37a2b-72ca-490e-90bd-c3908ee0a8af"
       responses:
         "201":
           description: Session berhasil dibuat
@@ -2027,14 +2065,17 @@ paths:
                     type: object
                     properties:
                       session_id:
-                        type: integer
-                        example: 1
+                        type: string
+                        format: uuid
+                        example: "0de68149-2fa3-4a7c-.............."
                       user_id:
-                        type: integer
-                        example: 1
+                        type: string
+                        format: uuid
+                        example: "0de68149-2fa3-4a7c-.............."
                       patient_id:
-                        type: integer
-                        example: 5
+                        type: string
+                        format: uuid
+                        example: "0de68149-2fa3-4a7c-.............."
                       start_time:
                         type: string
                         format: date-time
@@ -2100,8 +2141,9 @@ paths:
           required: true
           description: ID session yang akan diupdate
           schema:
-            type: integer
-          example: 1
+            type: string
+            format: uuid
+          example: "0de68149-2fa3-......."
       requestBody:
         content:
           application/json:
@@ -2116,7 +2158,7 @@ paths:
                 end_time:
                   type: string
                   format: date-time
-                  description: Waktu akhir session (ISO 8601)
+                  description: Waktu akhir session (ISO 8601). Opsional, otomatis terisi waktu sekarang jika status completed/cancelled.
                   example: "2024-12-27T11:30:00.000Z"
                 expression_data:
                   type: object
@@ -2153,7 +2195,6 @@ paths:
                 summary: Menyelesaikan session dengan expression data
                 value:
                   status: "completed"
-                  end_time: "2024-12-27T11:30:00.000Z"
                   expression_data:
                     happy: 0.65
                     neutral: 0.25
@@ -2164,7 +2205,6 @@ paths:
                 summary: Membatalkan session
                 value:
                   status: "cancelled"
-                  end_time: "2024-12-27T10:45:00.000Z"
               change_status_only:
                 summary: Update status saja tanpa expression_data
                 value:
@@ -2173,7 +2213,6 @@ paths:
                 summary: Update dengan expression_data kosong
                 value:
                   status: "completed"
-                  end_time: "2024-12-27T11:30:00.000Z"
                   expression_data: {}
       responses:
         "200":
@@ -2194,14 +2233,17 @@ paths:
                     description: Data session yang telah diupdate
                     properties:
                       session_id:
-                        type: integer
-                        example: 1
+                        type: string
+                        format: uuid
+                        example: "0de68149-2fa3-4a7c-.............."
                       user_id:
-                        type: integer
-                        example: 1
+                        type: string
+                        format: uuid
+                        example: "0de68149-2fa3-4a7c-.............."
                       patient_id:
-                        type: integer
-                        example: 5
+                        type: string
+                        format: uuid
+                        example: "0de68149-2fa3-4a7c-.............."
                       start_time:
                         type: string
                         format: date-time
@@ -2216,8 +2258,9 @@ paths:
                     description: Data evaluasi ekspresi wajah yang tersimpan
                     properties:
                       session_id:
-                        type: integer
-                        example: 1
+                        type: string
+                        format: uuid
+                        example: "0de68149-2fa3-4a7c-.............."
                       expression:
                         type: object
                         description: Object berisi data ekspresi
@@ -2328,8 +2371,9 @@ paths:
           required: true
           description: ID session yang akan diupdate
           schema:
-            type: integer
-          example: 1
+            type: string
+            format: uuid
+          example: "0de68149-2fa3-4a7c-.............."
       requestBody:
         content:
           application/json:
@@ -2344,19 +2388,17 @@ paths:
                 end_time:
                   type: string
                   format: date-time
-                  description: Waktu akhir session (ISO 8601)
+                  description: Waktu akhir session (ISO 8601). Opsional, otomatis terisi waktu sekarang jika status completed/cancelled.
                   example: "2024-12-27T11:30:00.000Z"
             examples:
               complete_session:
                 summary: Menyelesaikan session
                 value:
                   status: "completed"
-                  end_time: "2024-12-27T11:30:00.000Z"
               cancel_session:
                 summary: Membatalkan session
                 value:
                   status: "cancelled"
-                  end_time: "2024-12-27T10:45:00.000Z"
               change_status_only:
                 summary: Update status saja
                 value:
@@ -2379,14 +2421,17 @@ paths:
                     type: object
                     properties:
                       session_id:
-                        type: integer
-                        example: 1
+                        type: string
+                        format: uuid
+                        example: "0de68149-2fa3-4a7c-.............."
                       user_id:
-                        type: integer
-                        example: 1
+                        type: string
+                        format: uuid
+                        example: "0de68149-2fa3-4a7c-.............."
                       patient_id:
-                        type: integer
-                        example: 5
+                        type: string
+                        format: uuid
+                        example: "0de68149-2fa3-4a7c-.............."
                       start_time:
                         type: string
                         format: date-time
@@ -2476,8 +2521,9 @@ paths:
           required: true
           description: ID session konseling
           schema:
-            type: integer
-          example: 1
+            type: string
+            format: uuid
+          example: "0de68149-2fa3-4a7c-.............."
       responses:
         "200":
           description: Transkrip berhasil diambil
@@ -2489,11 +2535,13 @@ paths:
                   type: object
                   properties:
                     transcript_id:
-                      type: integer
-                      example: 1
+                      type: string
+                      format: uuid
+                      example: "0de68149-2fa3-4a7c-.............."
                     session_id:
-                      type: integer
-                      example: 1
+                      type: string
+                      format: uuid
+                      example: "0de68149-2fa3-4a7c-.............."
                     sender:
                       type: string
                       enum: [user, ai]
@@ -2569,8 +2617,9 @@ paths:
           required: true
           description: ID session konseling
           schema:
-            type: integer
-          example: 1
+            type: string
+            format: uuid
+          example: "0de68149-2fa3-4a7c-.............."
       responses:
         "200":
           description: Data evaluasi
@@ -2580,11 +2629,13 @@ paths:
                 type: object
                 properties:
                   session_id:
-                    type: integer
-                    example: 1
+                    type: string
+                    format: uuid
+                    example: "0de68149-2fa3-4a7c-.............."
                   user_id:
-                    type: integer
-                    example: 1
+                    type: string
+                    format: uuid
+                    example: "0de68149-2fa3-4a7c-.............."
                   empathy_score:
                     type: integer
                     description: Skor empati 0-100
@@ -2669,8 +2720,9 @@ paths:
           required: true
           description: ID session yang akan dievaluasi
           schema:
-            type: integer
-          example: 1
+            type: string
+            format: uuid
+          example: "0de68149-2fa3-4a7c-.............."
       requestBody:
         required: true
         content:
@@ -2725,7 +2777,8 @@ paths:
                     type: object
                     properties:
                       session_id:
-                        type: integer
+                        type: string
+                        format: uuid
                       empathy_score:
                         type: integer
                       question_score:
@@ -2800,8 +2853,9 @@ paths:
           required: true
           description: ID session yang akan dianalisis
           schema:
-            type: integer
-          example: 1
+            type: string
+            format: uuid
+          example: "0de68149-2fa3-4a7c-.............."
       responses:
         "200":
           description: Analisis berhasil
@@ -2821,8 +2875,9 @@ paths:
                     description: Data evaluasi yang tersimpan (tanpa created_at)
                     properties:
                       session_id:
-                        type: integer
-                        example: 1
+                        type: string
+                        format: uuid
+                        example: "0de68149-2fa3-4a7c-.............."
                       empathy_score:
                         type: integer
                         example: 82
@@ -2840,7 +2895,8 @@ paths:
                       type: object
                       properties:
                         transcript_id:
-                          type: integer
+                          type: string
+                          format: uuid
                           description: ID transkrip
                         message:
                           type: string
@@ -3095,8 +3151,9 @@ paths:
           required: true
           description: ID pasien
           schema:
-            type: integer
-          example: 5
+            type: string
+            format: uuid
+          example: "0de68149-2fa3-4a7c-.............."
       responses:
         "200":
           description: Statistik pasien berhasil diambil
@@ -3106,8 +3163,9 @@ paths:
                 type: object
                 properties:
                   patient_id:
-                    type: integer
-                    example: 5
+                    type: string
+                    format: uuid
+                    example: "0de68149-2fa3-4a7c-.............."
                   totalSessions:
                     type: integer
                     description: Total semua session
@@ -3141,7 +3199,8 @@ paths:
                       type: object
                       properties:
                         session_id:
-                          type: integer
+                          type: string
+                          format: uuid
                         start_time:
                           type: string
                           format: date-time

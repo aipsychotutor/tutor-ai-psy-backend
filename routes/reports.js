@@ -60,7 +60,7 @@ router.get("/evaluation/:session_id", async (req, res) => {
     res.json({
       ...data,
       evaluated: true,
-      expression_data: expression_data[0].expression,
+      expression_data: expression_data && expression_data.length > 0 ? expression_data[0].expression : null,
     });
   } catch (err) {
     if (err.message.includes("Sesi tidak ditemukan")) {

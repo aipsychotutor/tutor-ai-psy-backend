@@ -91,6 +91,26 @@ router.post("/migrate-embeddings", async (req, res) => {
   }
 });
 
+router.get("/model/:patientId", async (req, res) => {
+  try {
+    const { patientId } = req.params;
+    const user_id = req.user.user_id;
+
+    const data = await PatientModel.getPatientAvatarPath(patientId, user_id);
+
+    if (!data || !data.avatar_path) {
+      return res.json({ avatar_path: "/models/default.glb" });
+    }
+
+    res.json({ avatar_path: data.avatar_path });
+  } catch (err) {
+    if (err.message.includes("Pasien tidak ditemukan")) {
+      return res.status(404).json({ error: err.message });
+    }
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.get("/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -348,26 +368,6 @@ router.post("/", async (req, res) => {
     });
   } catch (error) {
     return res.status(500).json({ status: "error", message: error.message });
-  }
-});
-
-router.get("/model/:patientId", async (req, res) => {
-  try {
-    const { patientId } = req.params;
-    const user_id = req.user.user_id;
-
-    const data = await PatientModel.getPatientAvatarPath(patientId, user_id);
-
-    if (!data || !data.avatar_path) {
-      return res.json({ avatar_path: "/models/default.glb" });
-    }
-
-    res.json({ avatar_path: data.avatar_path });
-  } catch (err) {
-    if (err.message.includes("Pasien tidak ditemukan")) {
-      return res.status(404).json({ error: err.message });
-    }
-    res.status(500).json({ error: err.message });
   }
 });
 
