@@ -2,6 +2,8 @@
 
 The core REST API and database integration server for CommuLab, an interactive counseling communication simulation and analysis training platform.
 
+Frontend [here](https://github.com/aipsychotutor/tutor-ai-psy-frontend) | Model [here](https://github.com/aipsychotutor/tutor-ai-psy-ai-model-server)
+
 [![Node.js Version](https://img.shields.io/badge/Node.js-18.x-339933?style=flat-square&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
 [![Express.js](https://img.shields.io/badge/Express.js-4.x-000000?style=flat-square&logo=express&logoColor=white)](https://expressjs.com/)
 [![Supabase](https://img.shields.io/badge/Supabase-Database-3ECF8E?style=flat-square&logo=supabase&logoColor=white)](https://supabase.com/)
