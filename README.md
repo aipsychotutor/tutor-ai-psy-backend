@@ -148,4 +148,4 @@ tutor-ai-psy-backend/
 - Query optimization and vector index tuning in Supabase for larger datasets.
 
 ## Author
-Maintained and developed by Commulab System.
+Maintained and developed by Commulab Team.
