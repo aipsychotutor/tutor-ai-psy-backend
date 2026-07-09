@@ -7,7 +7,7 @@ The core REST API and database integration server for CommuLab, an interactive c
 [![Supabase](https://img.shields.io/badge/Supabase-Database-3ECF8E?style=flat-square&logo=supabase&logoColor=white)](https://supabase.com/)
 [![Swagger](https://img.shields.io/badge/Swagger-OpenAPI%203.0-85EA2D?style=flat-square&logo=swagger&logoColor=black)](https://swagger.io/)
 
-![Architecture Diagram](./docs/assets/architecture-diagram.png?v=1)
+![Architecture Diagram](docs/assets/architecture-diagram.png?v=1)
 
 CommuLab enables counselors-in-training to simulate conversations with AI-driven clients, analyzing communication effectiveness through text, prosody, and facial expressions. The backend handles user session states, routes counselor inputs to classification engines, manages client records, and aggregates diagnostic metrics into comprehensive reports.
 
@@ -84,11 +84,11 @@ MODEL_API_URL=http://localhost:3000
 Once the server is running, you can explore and test the endpoints via the built-in Swagger UI:
 `http://localhost:3000/api-docs`
 
-![Swagger UI](./docs/assets/swagger-ui.png?v=1)
+![Swagger UI](docs/assets/swagger-ui.png?v=1)
 
 ### Database Schema Overview
 The database relationships and schema layout managed in Supabase:
-![Supabase Schema](./docs/assets/supabase-schema-commulab.png?v=1)
+![Supabase Schema](docs/assets/supabase-schema-commulab.png?v=1)
 
 ### Endpoints Overview
 
