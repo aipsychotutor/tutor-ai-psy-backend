@@ -1,7 +1,7 @@
 # Tutor AI Psychiatry Backend API
 
 <p align="center">
-  <img src="docs/assets/architecture-diagram.png" alt="Tutor AI Psychiatry Architecture Diagram" width="100%" />
+  <img src="docs/assets/architecture-diagram.png" alt="Tutor AI Psychiatry Architecture Diagram"  />
 </p>
 
 ## One-line Description
@@ -15,7 +15,7 @@ The core REST API and database integration server for the Tutor AI Psychiatry co
 
 ## Screenshots (Swagger + System)
 <p align="center">
-  <img src="docs/assets/swagger-ui.png" alt="Swagger UI API Documentation" width="100%" />
+  <img src="docs/assets/swagger-ui.png" alt="Swagger UI API Documentation"  />
 </p>
 
 ## Features
@@ -62,12 +62,12 @@ Run the development server using nodemon:
 ```bash
 npm run dev
 ```
-The server will start on `http://localhost:3001` (or the port specified in your `.env` file).
+The server will start on `http://localhost:3000` (or the port specified in your `.env` file).
 
 ## Environment Variables
 Create a `.env` file in the root of the backend folder:
 ```ini
-PORT=3001
+PORT=3000
 NODE_ENV=development
 SUPABASE_URL=your_supabase_url
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
@@ -76,17 +76,17 @@ JWT_SECRET=your_jwt_secret_key
 GEMINI_API_KEY=your_gemini_api_key
 ELEVEN_LABS_API_KEY=your_elevenlabs_api_key
 PYTHON_API_URL=http://localhost:8000
-MODEL_API_URL=http://localhost:3001
+MODEL_API_URL=http://localhost:3000
 ```
 
 ## API Documentation
 The API endpoints are documented using OpenAPI 3.0. When the server is running, access the interactive Swagger documentation UI at:
-`http://localhost:3001/api-docs`
+`http://localhost:3000/api-docs`
 
 ### Database Schema Overview
 The database schema relationships and tables are integrated via Supabase:
 <p align="center">
-  <img src="docs/assets/supabase-schema-commulab.png" alt="Supabase Database Schema" width="100%" />
+  <img src="docs/assets/supabase-schema-commulab.png" alt="Supabase Database Schema"  />
 </p>
 
 ### Endpoint Summary
