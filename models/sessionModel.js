@@ -17,8 +17,39 @@ async function checkSessionAccess(sessionId, userId) {
   return true;
 }
 
+// === HELPER: CLEANUP STALE ONGOING SESSIONS ===
+async function cleanupStaleSessions(userId) {
+  try {
+    // Sesi 'ongoing' yang dibuat lebih dari 1 jam lalu otomatis diselesaikan
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    await supabase
+      .from("sessions")
+      .update({
+        status: "completed",
+        end_time: new Date().toISOString(),
+      })
+      .eq("user_id", userId)
+      .eq("status", "ongoing")
+      .lt("start_time", oneHourAgo);
+  } catch (err) {
+    console.warn("Failed to cleanup stale sessions:", err.message);
+  }
+}
+
 // === CREATE ===
 async function createNewSession(userId, patientId) {
+  // Tutup sesi ongoing lama milik user ini sebelum membuat sesi baru
+  try {
+    await supabase
+      .from("sessions")
+      .update({
+        status: "completed",
+        end_time: new Date().toISOString(),
+      })
+      .eq("user_id", userId)
+      .eq("status", "ongoing");
+  } catch (e) {}
+
   const { data: session, error } = await supabase
     .from("sessions")
     .insert([
@@ -37,6 +68,8 @@ async function createNewSession(userId, patientId) {
 
 // === READ (List View) ===
 async function getAllSessions(userId, queryFilters = {}) {
+  await cleanupStaleSessions(userId);
+
   let query = supabase
     .from("sessions")
     .select(

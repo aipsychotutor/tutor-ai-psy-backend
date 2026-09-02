@@ -5,7 +5,7 @@ import SessionTranscriptModel from "../models/sessionTranscriptModel.js";
 import SessionEvaluationModel from "../models/sessionEvaluationModel.js";
 
 // Configuration
-const PYTHON_API_URL = process.env.PYTHON_API_URL || "http://localhost:8000";
+const PYTHON_API_URL = process.env.PYTHON_API_URL || process.env.API_URL || "http://localhost:8000";
 
 // ============================================================================
 // HELPER: Direct Python API Calls

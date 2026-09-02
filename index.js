@@ -31,10 +31,10 @@ const port = 3000;
 app.use(express.json());
 app.use(
   cors({
-    origin: [
-    "http://localhost:5173", 
-    "http://localhost:5174" 
-    ],
+    origin: (origin, callback) => {
+      // Allow all origins (localhost, Cloudflare tunnels, etc.)
+      callback(null, true);
+    },
     credentials: true,
   })
 );
