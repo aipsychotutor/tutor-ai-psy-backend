@@ -45,6 +45,11 @@ router.get("/evaluation/:session_id", async (req, res) => {
         session_id
       );
 
+    const faceData =
+      expression_data && expression_data.length > 0
+        ? expression_data[0].expression
+        : null;
+
     if (!data) {
       return res.json({
         session_id,
@@ -53,14 +58,14 @@ router.get("/evaluation/:session_id", async (req, res) => {
         question_score: 0,
         feedback_text: null,
         evaluated: false,
-        expression_data: null,
+        expression_data: faceData,
       });
     }
 
     res.json({
       ...data,
       evaluated: true,
-      expression_data: expression_data && expression_data.length > 0 ? expression_data[0].expression : null,
+      expression_data: faceData,
     });
   } catch (err) {
     if (err.message.includes("Sesi tidak ditemukan")) {
@@ -310,10 +315,22 @@ router.post("/:session_id/analyze", async (req, res) => {
     const analysisResult = await analyzeSession(session_id, user_id);
     const { evaluation, modelAnalysis, prosodyAnalysis } = analysisResult;
 
+    const faceEvaluation =
+      await SessionFaceEvaluationModel.getFaceEvaluationsBySessionId(
+        session_id
+      );
+    const expression_data =
+      faceEvaluation && faceEvaluation.length > 0
+        ? faceEvaluation[0].expression
+        : null;
+
     res.json({
       success: true,
       message: "Evaluasi berhasil disimpan",
-      evaluation: evaluation,
+      evaluation: {
+        ...evaluation,
+        expression_data: expression_data,
+      },
       classification_results: modelAnalysis.results,
       detailed_analysis: {
         model_statistics: modelAnalysis.statistics,
