@@ -1,7 +1,7 @@
 import {geminiApiKey } from "../constant.js";
 
-const MODEL_FAST = "gemini-2.5-flash"; 
-const MODEL_STABLE = "gemini-2.5-pro";
+const MODEL_FAST = "gemini-2.5-flash-lite"; 
+const MODEL_STABLE = "gemini-2.0-flash-001";
 
 // ========== VALIDATION ==========
 const validExpressions = [
@@ -136,21 +136,29 @@ export function validateMessages(messages) {
 
 // 1. Mengambil Vector (Angka) dari Teks
 export async function getEmbedding(text) {
-  const EMBEDDING_URL = "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent";
+  // Pengecekan aman agar tidak mengirim string kosong
+  if (!text || typeof text !== "string" || text.trim() === "") {
+    console.warn("[Embedding] Empty or invalid text provided. Skipping.");
+    return null;
+  }
+
+  const EMBEDDING_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-2:embedContent";
 
   try {
     const response = await fetch(`${EMBEDDING_URL}?key=${geminiApiKey}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "models/text-embedding-004",
         content: {
           parts: [{ text: text }]
         }
       })
     });
 
-    if (!response.ok) throw new Error(`HTTP Error ${response.status}`);
+    if (!response.ok) {
+      const errorDetails = await response.text(); 
+      throw new Error(`HTTP ${response.status} - Details: ${errorDetails}`);
+    }
 
     const data = await response.json();
     return data.embedding.values;
