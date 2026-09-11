@@ -258,7 +258,10 @@ OUTPUT (JSON):
   // --- RETRY LOOP ---
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const geminiData = await callGeminiAPI(feedbackPrompt);
+      const geminiData = await callGeminiAPI(feedbackPrompt, {
+        maxOutputTokens: 1200,
+        responseMimeType: "application/json",
+      });
 
       // --- PARSING RESPONSE ---
       let rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "{}";

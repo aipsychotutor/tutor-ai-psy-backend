@@ -76,7 +76,8 @@ async function createNewPatient(patientData) {
         .single();
 
     if (error) {
-        throw new new Error("Gagal menambahkan pasien ke database.");
+        console.error("[PatientModel] createNewPatient DB error:", error);
+        throw new Error(`Gagal menambahkan pasien ke database: ${error.message || error}`);
     }
 
     return newPatient;

@@ -1,7 +1,7 @@
 import {geminiApiKey } from "../constant.js";
 
-const MODEL_FAST = "gemini-2.5-flash-lite"; 
-const MODEL_STABLE = "gemini-2.0-flash-001";
+const MODEL_FAST = "gemini-3.1-flash-lite"; 
+const MODEL_STABLE = "gemini-3-flash";
 
 // ========== VALIDATION ==========
 const validExpressions = [
@@ -26,18 +26,33 @@ const validAnimations = [
 ];
 
 // Fungsi pembantu untuk fetch ke Gemini
-async function requestToGemini(prompt, modelName, signal = null) {
+async function requestToGemini(prompt, modelName, signal = null, options = {}) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiApiKey}`;
   
+  const generationConfig = {
+    temperature: options.temperature ?? 0.7,
+    ...(options.maxOutputTokens ? { maxOutputTokens: options.maxOutputTokens } : {}),
+    ...(options.responseMimeType ? { responseMimeType: options.responseMimeType } : {}),
+  };
+
+  const body = {
+    contents: [{ parts: [{ text: prompt }] }],
+  };
+
+  if (Object.keys(generationConfig).length > 0) {
+    body.generationConfig = generationConfig;
+  }
+
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+    body: JSON.stringify(body),
     signal: signal // Untuk fitur timeout/abort
   });
 
   if (!response.ok) {
-    throw new Error(`API Error ${response.status}: ${response.statusText}`);
+    const errorBody = await response.text();
+    throw new Error(`API Error ${response.status}: ${response.statusText} (${errorBody})`);
   }
 
   return await response.json();
@@ -60,7 +75,7 @@ function validateMessage(message) {
 }
 
 // Switch Model
-export async function callGeminiAPI(prompt) {
+export async function callGeminiAPI(prompt, options = {}) {
   let responseJson;
   const startTime = Date.now();
 
@@ -69,7 +84,7 @@ export async function callGeminiAPI(prompt) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-    responseJson = await requestToGemini(prompt, MODEL_FAST, controller.signal);
+    responseJson = await requestToGemini(prompt, MODEL_FAST, controller.signal, options);
 
     clearTimeout(timeoutId);
 
@@ -78,7 +93,7 @@ export async function callGeminiAPI(prompt) {
     console.warn(`[Gemini] Fast model failed or timed out. Switching to Stable model. Reason: ${err.message}`);
 
     try {
-      responseJson = await requestToGemini(prompt, MODEL_STABLE);
+      responseJson = await requestToGemini(prompt, MODEL_STABLE, null, options);
     } catch (errPro) {
       console.error("[Gemini] CRITICAL FAILURE: Both models failed.");
       console.error(`Error Flash: ${err.message}`);
@@ -135,38 +150,52 @@ export function validateMessages(messages) {
 }
 
 // 1. Mengambil Vector (Angka) dari Teks
-export async function getEmbedding(text) {
+export async function getEmbedding(text, retries = 2) {
   // Pengecekan aman agar tidak mengirim string kosong
   if (!text || typeof text !== "string" || text.trim() === "") {
-    console.warn("[Embedding] Empty or invalid text provided. Skipping.");
     return null;
   }
 
   const EMBEDDING_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-2:embedContent";
 
-  try {
-    const response = await fetch(`${EMBEDDING_URL}?key=${geminiApiKey}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        content: {
-          parts: [{ text: text }]
-        }
-      })
-    });
+  for (let attempt = 1; attempt <= retries + 1; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
 
-    if (!response.ok) {
-      const errorDetails = await response.text(); 
-      throw new Error(`HTTP ${response.status} - Details: ${errorDetails}`);
+      const response = await fetch(`${EMBEDDING_URL}?key=${geminiApiKey}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: {
+            parts: [{ text: text }]
+          }
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorDetails = await response.text(); 
+        throw new Error(`HTTP ${response.status} - Details: ${errorDetails}`);
+      }
+
+      const data = await response.json();
+      return data?.embedding?.values || null;
+
+    } catch (error) {
+      if (attempt <= retries) {
+        // Jeda singkat sebelum retry (exponential backoff)
+        await new Promise(r => setTimeout(r, 400 * attempt));
+      } else {
+        const causeMsg = error.cause ? ` (Cause: ${error.cause?.message || error.cause})` : "";
+        console.warn(`[Embedding] Failed to generate vector: ${error.message}${causeMsg}`);
+        return null;
+      }
     }
-
-    const data = await response.json();
-    return data.embedding.values;
-
-  } catch (error) {
-    console.error(`[Embedding] Failed to generate vector: ${error.message}`);
-    return null;
   }
+  return null;
 }
 // 2. Menghitung Kemiripan (Cosine Similarity)
 function cosineSimilarity(vecA, vecB) {

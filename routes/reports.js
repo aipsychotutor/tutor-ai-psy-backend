@@ -45,10 +45,18 @@ router.get("/evaluation/:session_id", async (req, res) => {
         session_id
       );
 
-    const faceData =
-      expression_data && expression_data.length > 0
-        ? expression_data[0].expression
-        : null;
+    let faceData = [];
+    if (expression_data && expression_data.length > 0) {
+      const rawExp = expression_data[0].expression;
+      if (Array.isArray(rawExp)) {
+        faceData = rawExp;
+      } else if (typeof rawExp === "string") {
+        try {
+          const parsed = JSON.parse(rawExp);
+          if (Array.isArray(parsed)) faceData = parsed;
+        } catch (e) {}
+      }
+    }
 
     if (!data) {
       return res.json({
@@ -319,10 +327,18 @@ router.post("/:session_id/analyze", async (req, res) => {
       await SessionFaceEvaluationModel.getFaceEvaluationsBySessionId(
         session_id
       );
-    const expression_data =
-      faceEvaluation && faceEvaluation.length > 0
-        ? faceEvaluation[0].expression
-        : null;
+    let expression_data = [];
+    if (faceEvaluation && faceEvaluation.length > 0) {
+      const rawExp = faceEvaluation[0].expression;
+      if (Array.isArray(rawExp)) {
+        expression_data = rawExp;
+      } else if (typeof rawExp === "string") {
+        try {
+          const parsed = JSON.parse(rawExp);
+          if (Array.isArray(parsed)) expression_data = parsed;
+        } catch (e) {}
+      }
+    }
 
     res.json({
       success: true,

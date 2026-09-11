@@ -34,6 +34,7 @@ graph TD
 ## Tech Stack
 
 - **Server Framework:** Node.js, Express.js
+- **Audio & Media Processing:** `ffmpeg-static` (bundled cross-platform binary) & Rhubarb Lip Sync
 - **Database Client:** Supabase SDK (PostgreSQL integration)
 - **Security:** JSONWebToken (JWT) & bcryptjs
 - **Documentation:** yamljs & swagger-ui-express
@@ -43,23 +44,45 @@ graph TD
 
 ### Prerequisites
 
-- Node.js (version 18.x or higher)
-- npm (Node Package Manager)
+- **Node.js**: version 18.x or higher
+- **npm**: Node Package Manager
+- **FFmpeg**: Automatically bundled and handled via `ffmpeg-static` (no manual system install needed)
+- **Rhubarb LipSync**: Binaries in `bin/rhubarb.exe` with accompanying `bin/res/` assets (for lipsync generation)
+- **FastAPI AI Model Server**: Running on `http://localhost:8000` (for question classification, empathy scoring, and speech prosody)
 
-### Installation
+### Installation & Setup
 
-1. Navigate to the backend directory:
+1. **Navigate to the backend directory:**
    ```bash
    cd tutor-ai-psy-backend
    ```
-2. Install dependencies:
+2. **Install package dependencies:**
    ```bash
    npm install
+   ```
+3. **Set up Rhubarb Lip Sync (Required for 3D Avatar LipSync):**
+   - Download the latest release from [Rhubarb Lip Sync Releases](https://github.com/DanielSWolf/rhubarb-lip-sync/releases).
+   - Extract and ensure `rhubarb.exe` and the `res/` folder are placed inside the `bin/` directory:
+     ```
+     tutor-ai-psy-backend/
+     └── bin/
+         ├── rhubarb.exe
+         └── res/
+     ```
+4. **Ensure `audios/` storage directory exists:**
+   Create the directory if it does not already exist (used for storing temporary audio and phoneme JSON chunks):
+   ```bash
+   mkdir audios
+   ```
+5. **Set up environment variables:**
+   Copy `.env.example` to `.env` and fill in your credentials:
+   ```bash
+   cp .env.example .env
    ```
 
 ### Running the Server
 
-Start the API server in development mode:
+Start the API server in development mode (with hot-reload via nodemon):
 ```bash
 npm run dev
 ```
@@ -67,18 +90,26 @@ The server will start on `http://localhost:3000` (or your configured environment
 
 ## Environment Variables
 
-Configure a `.env` file in the root of the backend folder:
+Configure your `.env` file in the root of the backend folder:
 ```ini
 PORT=3000
 NODE_ENV=development
+
+# Database (Supabase)
 SUPABASE_URL=your_supabase_url
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
-DATABASE_URL=your_postgresql_database_url
+
+# Security
 JWT_SECRET=your_jwt_secret_key
+
+# AI & Speech Services
 GEMINI_API_KEY=your_gemini_api_key
 ELEVEN_LABS_API_KEY=your_elevenlabs_api_key
+GROQ_API_KEY=your_groq_api_key
+
+# Microservices
 PYTHON_API_URL=http://localhost:8000
-MODEL_API_URL=http://localhost:3000
+API_URL=http://localhost:3000
 ```
 
 ## Interactive API Documentation
@@ -144,11 +175,6 @@ tutor-ai-psy-backend/
 ├── index.js            # Main Express configurations
 └── openApi.yaml        # Swagger documentation schema
 ```
-
-## Future Improvements
-- Secure log-rotation and automated API key rotation mechanisms.
-- Comprehensive unit and integration testing across service modules.
-- Query optimization and vector index tuning in Supabase for larger datasets.
 
 ## Author
 Developed and maintained by the CommuLab Team.

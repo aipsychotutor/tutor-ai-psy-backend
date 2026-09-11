@@ -23,7 +23,6 @@ async function generatePatientEmbeddings(patientData) {
     symptom_intensity_tag = "Severe";
   }
   // 1. Gabungkan teks penting jadi satu string panjang
-  // Kita gabung background, biodata (bikin manual stringnya), dan kepribadian
   const biodataText = `
     Nama: ${patientData.patient_name}
     Usia: ${patientData.age || "-"}
@@ -38,33 +37,37 @@ async function generatePatientEmbeddings(patientData) {
     biodataText,
     patientData.background_story,
     patientData.personality_traits
-      ? JSON.stringify(patientData.personality_traits)
+      ? (Array.isArray(patientData.personality_traits) ? patientData.personality_traits.join(", ") : JSON.stringify(patientData.personality_traits))
       : "",
   ]
     .filter(Boolean)
     .join("\n\n");
 
   // 2. Pecah jadi potongan kalimat (Chunks)
-  // Split berdasarkan baris baru atau titik. Filter yg kependekan.
   const chunks = fullText
     .split(/\n|\./)
     .map((s) => s.trim())
     .filter((s) => s.length > 20); // Hanya ambil kalimat > 20 huruf
 
-  const knowledgeBase = [];
+  if (chunks.length === 0) return null;
 
-  // 3. Loop & Request Embedding ke Google
-  for (const chunk of chunks) {
-    const vector = await getEmbedding(chunk);
-    if (vector) {
-      knowledgeBase.push({
-        text: chunk,
-        vector: vector,
-      });
-    }
-  }
+  // 3. Request Embedding ke Google secara paralel
+  const embedResults = await Promise.all(
+    chunks.map(async (chunk) => {
+      try {
+        const vector = await getEmbedding(chunk);
+        if (vector) {
+          return { text: chunk, vector };
+        }
+      } catch (err) {
+        console.warn(`[Embedding] Failed for chunk: "${chunk.slice(0, 30)}..."`, err.message);
+      }
+      return null;
+    })
+  );
 
-  return knowledgeBase;
+  const knowledgeBase = embedResults.filter(Boolean);
+  return knowledgeBase.length > 0 ? knowledgeBase : null;
 }
 
 // ROUTES
@@ -200,9 +203,7 @@ router.put("/:id", async (req, res) => {
     try {
       knowledgeBase = await generatePatientEmbeddings(rawDataForEmbedding);
     } catch (embError) {
-      return res
-        .status(500)
-        .json({ status: "error", message: "Gagal memperbarui AI Knowledge." });
+      console.warn("⚠️ Warning: Failed to generate embeddings on update, continuing:", embError.message);
     }
 
     const updatedData = {
