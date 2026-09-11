@@ -50,17 +50,27 @@ Jawablah setiap pertanyaan atau pernyataan dari lawan bicara secara alami.
 Aturan Output:
 1. Jawaban HARUS berupa JSON array valid TANPA teks tambahan.
 2. Format:
-   { "text": "...", "facialExpression": "...", "animation": "..." }
+   [
+     { "text": "...", "facialExpression": "...", "animation": "..." }
+   ]
 3. facialExpression: ["smile","sad","angry","surprised","funnyFace","default"]
 4. animation: ["Talking_0","Talking_1","Talking_2","Crying","Laughing","Rumba","Idle","Terrified","Angry"]
-5. *PANJANG JAWABAN MAKSIMAL 60 KATA.* (Ini Sangat Penting agar respon cepat).
+5. STRUKTUR PESAN & PANJANG KALIMAT:
+   - Bagi cerita/jawaban Anda menjadi 1 sampai 2 objek di dalam array JSON (masing-masing 15 - 25 kata per objek) agar mengalir alami seperti jeda bicara manusia dan diproses cepat.
+   - Total keseluruhan kata berkisar 30 - 50 kata.
+   - Contoh output 2 bubble:
+     [
+       { "text": "Jujur saya tuh lagi ngerasa kewalahan banget akhir-akhir ini...", "facialExpression": "sad", "animation": "Talking_1" },
+       { "text": "Permintaan pesanan terus turun, dan saya bingung harus cerita ke siapa lagi.", "facialExpression": "sad", "animation": "Talking_2" }
+     ]
 
 User: {{userMessage}}
 `;
 
 
-// ========== IN-MEMORY STORAGE ==========
+// ========== IN-MEMORY STORAGE (PERSISTENT CACHE) ==========
 const sessionPersonas = new Map();
+const patientPersonas = new Map();
 let activePersona = personaMaya;
 
 // ========== HELPER FUNCTIONS ==========
@@ -92,42 +102,59 @@ function buildPersonaFromPatient(patient) {
 
 // ========== SERVICE METHODS ==========
 export async function getPersonaForSession(session_id) {
+  if (!session_id) {
+    return activePersona || personaMaya;
+  }
+
+  // Fast Path: In-Memory Cache (0 ms)
   if (sessionPersonas.has(session_id)) {
     return sessionPersonas.get(session_id);
   }
 
-  const { data: session, error } = await supabase
-    .from("sessions")
-    .select(
+  try {
+    const { data: session, error } = await supabase
+      .from("sessions")
+      .select(
+        `
+        patient_id,
+        patients (
+          patient_name,
+          age,
+          gender,
+          occupation,
+          marital_status,
+          background_story,
+          personality_traits,
+          knowledge_base,
+          symptom_intensity
+        )
       `
-      patient_id,
-      patients (
-        patient_name,
-        age,
-        gender,
-        occupation,
-        marital_status,
-        background_story,
-        personality_traits,
-        knowledge_base,
-        symptom_intensity
       )
-    `
-    )
-    .eq("session_id", session_id)
-    .single();
+      .eq("session_id", session_id)
+      .single();
 
-  if (error || !session?.patients) {
-    console.warn("Using default persona");
-    return personaMaya;
+    if (error || !session?.patients) {
+      console.warn("[Persona] Session not found in DB, using fallback active persona.");
+      return activePersona || personaMaya;
+    }
+
+    const persona = buildPersonaFromPatient(session.patients);
+    sessionPersonas.set(session_id, persona);
+    return persona;
+  } catch (err) {
+    console.warn(`[Persona] Failed to fetch session persona: ${err.message}`);
+    return activePersona || personaMaya;
   }
-
-  const persona = buildPersonaFromPatient(session.patients);
-  sessionPersonas.set(session_id, persona);
-  return persona;
 }
 
 export async function setPersonaFromPatient(patient_id) {
+  if (patientPersonas.has(patient_id)) {
+    activePersona = patientPersonas.get(patient_id);
+    return {
+      activePersona: activePersona,
+      patient_id: patient_id,
+    };
+  }
 
   const { data: patient, error } = await supabase
     .from("patients")
@@ -140,6 +167,7 @@ export async function setPersonaFromPatient(patient_id) {
   }
 
   const newPersona = buildPersonaFromPatient(patient);
+  patientPersonas.set(patient_id, newPersona);
   activePersona = newPersona;
   return {
     activePersona: activePersona,
